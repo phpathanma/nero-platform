@@ -1,0 +1,87 @@
+.pastGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.pastCard.pastCard {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  grid-template-rows: auto auto 1fr auto;
+  column-gap: 16px;
+  align-items: start;
+  min-height: 154px;
+  padding: 12px;
+}
+
+.pastCard > div:first-child {
+  grid-column: 1;
+  grid-row: 1 / 5;
+  width: 112px;
+  height: 128px;
+  min-height: 0;
+  aspect-ratio: auto;
+  padding: 10px;
+  font-size: 14px;
+}
+
+.pastCard > div:first-child::before {
+  top: 9px;
+  left: 9px;
+  font-size: 7px;
+}
+
+.pastCard > div:first-child::after {
+  top: 22%;
+  left: 8%;
+}
+
+.pastCard > .tag {
+  grid-column: 2;
+  margin-top: 2px;
+  font-size: 9px;
+}
+
+.pastCard > h3 {
+  grid-column: 2;
+  margin: 5px 0 2px;
+  font-size: clamp(17px, 2vw, 21px);
+}
+
+.pastCard > small {
+  grid-column: 2;
+  align-self: start;
+  font-size: 11px;
+}
+
+.pastCard > .btn {
+  grid-column: 2;
+  justify-self: start;
+  margin-top: 9px;
+  padding: 8px 10px;
+  font-size: 9px;
+}
+
+@media (max-width: 760px) {
+  .pastGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 430px) {
+  .pastCard.pastCard {
+    grid-template-columns: 90px minmax(0, 1fr);
+    min-height: 128px;
+    column-gap: 12px;
+  }
+
+  .pastCard > div:first-child {
+    width: 90px;
+    height: 104px;
+    font-size: 12px;
+  }
+
+  .pastCard > .btn {
+    margin-top: 5px;
+    padding: 7px 9px;
+  }
+}
