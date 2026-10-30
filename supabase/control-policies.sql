@@ -6,7 +6,7 @@ returns boolean
 language sql
 stable
 security definer
-set search_path = public
+set search_path = ''
 as $$
   select exists (
     select 1
@@ -74,7 +74,7 @@ create or replace function public.check_in_ticket(p_token text)
 returns jsonb
 language plpgsql
 security definer
-set search_path = public
+set search_path = ''
 as $$
 declare
   ticket record;
@@ -89,7 +89,7 @@ begin
     return jsonb_build_object('status', 'invalid', 'message', 'El código no es válido.');
   end if;
 
-  token_hash := encode(digest(convert_to(p_token, 'UTF8'), 'sha256'), 'hex');
+  token_hash := encode(pg_catalog.sha256(pg_catalog.convert_to(p_token, 'UTF8')), 'hex');
 
   select t.id, t.status as ticket_status, o.status as order_status,
          e.name as event_name, tt.name as tier_name, o.buyer_name
@@ -114,7 +114,7 @@ begin
   end if;
 
   update public.tickets
-     set status = 'used', used_at = now(), used_by = (select auth.uid())
+     set status = 'used', used_at = pg_catalog.now(), used_by = (select auth.uid())
    where id = ticket.id and status = 'valid';
 
   if not found then
