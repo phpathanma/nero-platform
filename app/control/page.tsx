@@ -6,8 +6,8 @@ export default async function ControlPage() {
   if (!supabase || !role) return <><span className="eyebrow">Centro de operaciones</span><h1>NERO CONTROL</h1><p className="muted">Inicia sesión para continuar.</p><Link className="btn" href="/control/login">INICIAR SESIÓN</Link></>;
   const { data, error } = await supabase.from("events").select("id,status,ticket_tiers(sold,price)");
   const events = data ?? [];
-  const published = events.filter((event: any) => event.status === "published").length;
-  const sold = events.reduce((sum: number, event: any) => sum + (event.ticket_tiers ?? []).reduce((total: number, tier: any) => total + tier.sold, 0), 0);
+  const published = events.filter((event: { status: string }) => event.status === "published").length;
+  const sold = events.reduce((sum: number, event: { ticket_tiers: { sold: number }[] | null }) => sum + (event.ticket_tiers ?? []).reduce((total: number, tier: { sold: number }) => total + tier.sold, 0), 0);
   const { data: orders } = role === "admin" ? await supabase.from("orders").select("total").eq("status", "paid") : { data: [] };
   const gross = (orders ?? []).reduce((sum, order) => sum + Number(order.total), 0);
   return <><span className="eyebrow">Centro de operaciones</span><h1>NERO CONTROL</h1><p className="muted">Administración y supervisión de la plataforma.</p>

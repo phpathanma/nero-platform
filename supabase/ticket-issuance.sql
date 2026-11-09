@@ -109,8 +109,9 @@ begin
 end;
 $$;
 
-revoke all on function public.issue_free_access_ticket(uuid,text,text,text,boolean) from public;
-grant execute on function public.issue_free_access_ticket(uuid,text,text,text,boolean) to anon, authenticated;
+-- Solo el servidor puede emitir: así nadie evita Turnstile llamando a la función directamente.
+revoke all on function public.issue_free_access_ticket(uuid,text,text,text,boolean) from public, anon, authenticated;
+grant execute on function public.issue_free_access_ticket(uuid,text,text,text,boolean) to service_role;
 
 create or replace function public.issue_courtesy_ticket(
   p_tier_id uuid,

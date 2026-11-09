@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { sendTicketEmail } from "@/lib/tickets/email";
 
 type IssueResult = { status: string; message?: string; token?: string; event?: string; tier?: string; date?: string; time?: string; venue?: string; city?: string; ticket_id?: string };
@@ -37,7 +37,7 @@ export async function POST(request: Request) {
     }
   }
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   if (!supabase) return NextResponse.json({ error: "El registro de entradas no está configurado." }, { status: 503 });
   const { data, error } = await supabase.rpc("issue_free_access_ticket", {
     p_tier_id: tierId, p_buyer_name: name, p_buyer_email: email,

@@ -24,7 +24,7 @@ En `.env.local`, configura `NEXT_PUBLIC_INSTAGRAM_URL` con el perfil oficial de 
 ## Conectar Supabase y habilitar Control
 
 1. En Supabase, abre SQL Editor. Si aún no existen las tablas, ejecuta `supabase/schema.sql` una vez.
-2. Ejecuta `supabase/control-policies.sql` para instalar los permisos y la función segura de check-in. Si ya habías ejecutado el esquema base, ejecuta solamente este segundo archivo.
+2. Ejecuta `supabase/control-policies.sql` para instalar los permisos y después `supabase/ticket-issuance.sql`, que contiene la función de check-in y la emisión de entradas.
 3. En Authentication, crea un usuario con correo y contraseña.
 4. Copia el UUID del usuario y asígnale un rol en SQL Editor:
 
@@ -40,7 +40,7 @@ Después de iniciar sesión en `/control`, el rol administrador puede gestionar 
 
 ## Variables de entorno
 
-Configura `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` en `.env.local` y en cada ambiente de Vercel. La clave publicable se puede usar en el cliente junto con RLS. Nunca agregues una service role key al frontend ni al repositorio.
+Configura `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` en `.env.local` y en cada ambiente de Vercel. La clave publicable se puede usar en el cliente junto con RLS. La emisión de Free Access requiere además `SUPABASE_SERVICE_ROLE_KEY` en el servidor. Nunca agregues una service role key al frontend, a una variable `NEXT_PUBLIC_` ni al repositorio.
 
 ## Rutas
 

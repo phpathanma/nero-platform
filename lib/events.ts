@@ -1,18 +1,18 @@
 import { unstable_cache } from "next/cache";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
-import type { EventItem } from "./event-types";
+import type { EventItem, EventRow, TierRow } from "./event-types";
 
 const EVENT_SELECT = "id, slug, name, tag, event_date, event_time, venue, city, status, accent, background, flyer_url, lineup, schedule, ticket_tiers(id,category,name,price,capacity,sold)";
 
-function mapEvent(e: any): EventItem {
+function mapEvent(e: EventRow): EventItem {
   return {
     id: e.id, slug: e.slug, name: e.name, tag: e.tag ?? "",
     date: e.event_date, time: e.event_time, venue: e.venue, city: e.city,
     status: e.status, accent: e.accent, background: e.background,
     flyer: e.flyer_url ?? "", lineup: e.lineup ?? [], schedule: e.schedule ?? [],
-    tiers: (e.ticket_tiers ?? []).map((tier: any) => ({
+    tiers: (e.ticket_tiers ?? []).map((tier: TierRow) => ({
       id: tier.id, category: tier.category ?? "custom", name: tier.name, price: Number(tier.price),
-      capacity: tier.capacity, sold: tier.sold,
+      capacity: tier.capacity, sold: tier.sold ?? 0,
     })),
   };
 }

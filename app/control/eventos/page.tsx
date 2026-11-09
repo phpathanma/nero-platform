@@ -2,13 +2,16 @@
 import { EventsTable } from "../events-table";
 import { getControlAccess } from "@/lib/supabase/control";
 
+type TableEvent = Parameters<typeof EventsTable>[0]["events"][number];
+type EventListRow = Pick<TableEvent, "id" | "slug" | "name" | "city" | "status"> & { event_date: string; ticket_tiers: TableEvent["tiers"] | null };
+
 export default async function EventsModulePage({ searchParams }: { searchParams: Promise<{ error?: string; saved?: string }> }) {
   const { error, saved } = await searchParams;
   const { supabase, role } = await getControlAccess();
   if (role !== "admin") return <><span className="eyebrow">Gestión</span><h1>Eventos</h1><div className="notice">Solo el rol administrador puede crear, editar o publicar eventos.</div></>;
 
   const { data, error: queryError } = await supabase!.from("events").select("id,slug,name,event_date,city,status,ticket_tiers(sold,capacity)").order("event_date", { ascending: true });
-  const events = (data ?? []).map((event: any) => ({ id: event.id, slug: event.slug, name: event.name, date: event.event_date, city: event.city, status: event.status, tiers: event.ticket_tiers ?? [] }));
+  const events = (data ?? []).map((event: EventListRow) => ({ id: event.id, slug: event.slug, name: event.name, date: event.event_date, city: event.city, status: event.status, tiers: event.ticket_tiers ?? [] }));
   return <><div className="module-heading"><div><span className="eyebrow">NERO CONTROL / CATÁLOGO</span><h1>Eventos</h1><p className="muted">Crea fechas, gestiona entradas y publica tus próximos encuentros.</p></div><Link className="btn" href="/control/eventos/nuevo">+ NUEVO EVENTO</Link></div>
     {saved && <div className="success-note">Cambios guardados correctamente.</div>}
     {error === "no-tiers" && <div className="notice">Activa al menos un tipo de entrada antes de publicar el evento.</div>}{error && error !== "no-tiers" && <div className="notice">{error === "has-tickets" ? "Este evento tiene entradas emitidas y no se puede eliminar. Puedes marcarlo como finalizado." : "No se pudo completar la acción. Revisa las políticas de Supabase."}</div>}

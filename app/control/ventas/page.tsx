@@ -1,12 +1,14 @@
 import { SalesTable, type Sale } from "../sales-table";
 import { getControlAccess } from "@/lib/supabase/control";
 
+type OrderRow = Pick<Sale, "id" | "buyer_name" | "buyer_email" | "status"> & { buyer_phone: string | null; source: Sale["source"] | null; total: number | string; created_at: string; events: { name: string } | null };
+
 export default async function SalesModulePage() {
   const { supabase, role } = await getControlAccess();
   if (role !== "admin") return <><span className="eyebrow">NERO CONTROL / FINANZAS</span><h1>Ventas</h1><div className="notice">Las ventas solo están disponibles para administradores.</div></>;
 
   const { data, error } = await supabase!.from("orders").select("id,buyer_name,buyer_email,buyer_phone,total,status,source,created_at,event_id,events(name)").order("created_at", { ascending: false });
-  const sales: Sale[] = (data ?? []).map((order: any) => ({ id: order.id, buyer_name: order.buyer_name, buyer_email: order.buyer_email, buyer_phone: order.buyer_phone ?? "", source: order.source ?? "sale", total: Number(order.total), status: order.status, date_label: new Intl.DateTimeFormat("es-PE", { day: "2-digit", month: "short", year: "numeric", timeZone: "America/Lima" }).format(new Date(order.created_at)), event_name: order.events?.name ?? "Evento" }));
+  const sales: Sale[] = ((data ?? []) as unknown as OrderRow[]).map((order) => ({ id: order.id, buyer_name: order.buyer_name, buyer_email: order.buyer_email, buyer_phone: order.buyer_phone ?? "", source: order.source ?? "sale", total: Number(order.total), status: order.status, date_label: new Intl.DateTimeFormat("es-PE", { day: "2-digit", month: "short", year: "numeric", timeZone: "America/Lima" }).format(new Date(order.created_at)), event_name: order.events?.name ?? "Evento" }));
   const paid = sales.filter((sale) => sale.status === "paid");
   const gross = paid.reduce((total, sale) => total + sale.total, 0);
   const pending = sales.filter((sale) => sale.status === "pending").length;

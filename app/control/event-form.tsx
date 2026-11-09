@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { saveEvent } from "./actions";
 import { TierEditor } from "./tier-editor";
 
@@ -19,6 +20,6 @@ export function EventForm({ event, error }: { event?: EventValues; error?: strin
     </div>
     <TierEditor initialTiers={event?.tiers ?? []} />
     {error && <div className="notice" role="alert">{errorMessages[error] ?? "No se pudo completar la operación."}</div>}
-    <div className="form-actions"><button className="btn" type="submit">{event?.id ? "GUARDAR CAMBIOS" : "CREAR EVENTO"}</button><a className="btn secondary" href="/control/eventos">CANCELAR</a></div>
+    <div className="form-actions"><button className="btn" type="submit">{event?.id ? "GUARDAR CAMBIOS" : "CREAR EVENTO"}</button><Link className="btn secondary" href="/control/eventos">CANCELAR</Link></div>
   </form>;
 }
