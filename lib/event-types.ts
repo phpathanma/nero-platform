@@ -31,6 +31,7 @@ export type EventRow = {
   accent: string;
   background: string;
   flyer_url: string | null;
+  music_url?: string | null;
   lineup: string[] | null;
   schedule: string[] | null;
   ticket_tiers: TierRow[] | null;
@@ -49,6 +50,7 @@ export type EventItem = {
   accent: string;
   background: string;
   flyer: string;
+  music: string;
   lineup: string[];
   schedule: string[];
   tiers: TicketTier[];

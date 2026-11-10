@@ -3,6 +3,10 @@
 import { revalidatePath, revalidateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { musicEmbed } from "@/lib/music";
+
+const FLYER_TYPES: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
+const FLYER_MAX_BYTES = 4 * 1024 * 1024;
 
 async function requireAdmin() {
   const supabase = await createClient();
@@ -60,14 +64,38 @@ export async function saveEvent(formData: FormData) {
     redirect(id ? `/control/eventos/${id}?error=validation` : "/control/eventos/nuevo?error=validation");
   }
 
+  const accentInput = String(formData.get("accent") ?? "");
+  const accent = /^#[0-9a-f]{6}$/i.test(accentInput) ? accentInput.toLowerCase() : "#d4ff3f";
+  const musicUrl = String(formData.get("music_url") ?? "").trim();
+  if (musicUrl && !musicEmbed(musicUrl)) redirect(id ? `/control/eventos/${id}?error=music` : "/control/eventos/nuevo?error=music");
+  const flyer = formData.get("flyer");
+  const flyerFile = flyer instanceof File && flyer.size > 0 ? flyer : null;
+  const flyerExtension = flyerFile ? FLYER_TYPES[flyerFile.type] : undefined;
+  if (flyerFile && (!flyerExtension || flyerFile.size > FLYER_MAX_BYTES)) {
+    redirect(id ? `/control/eventos/${id}?error=flyer-file` : "/control/eventos/nuevo?error=flyer-file");
+  }
+
   const payload = {
     name, slug, event_date: date, event_time: time, city, venue: venue || "Por confirmar",
-    tag, status, lineup, schedule, accent: "#d4ff3f", background: "#252b12",
+    tag, status, lineup, schedule, accent, background: "#252b12", music_url: musicUrl || null,
+    ...(!flyerFile && formData.get("remove_flyer") === "on" ? { flyer_url: null } : {}),
   };
   const result = id
     ? await supabase.from("events").update(payload).eq("id", id).select("id").single()
     : await supabase.from("events").insert(payload).select("id").single();
   if (result.error || !result.data) redirect(id ? `/control/eventos/${id}?error=save` : "/control/eventos/nuevo?error=save");
+
+  if (flyerFile && flyerExtension) {
+    const path = `${result.data.id}/${Date.now()}.${flyerExtension}`;
+    const upload = await supabase.storage.from("flyers").upload(path, flyerFile, { contentType: flyerFile.type, cacheControl: "31536000" });
+    const flyerUrl = upload.error ? null : supabase.storage.from("flyers").getPublicUrl(path).data.publicUrl;
+    const saved = flyerUrl ? await supabase.from("events").update({ flyer_url: flyerUrl }).eq("id", result.data.id) : null;
+    if (!saved || saved.error) {
+      console.error("[control/eventos] Flyer upload failed", { message: upload.error?.message ?? saved?.error?.message });
+      revalidateTag("events");
+      redirect(`/control/eventos/${result.data.id}?error=flyer`);
+    }
+  }
 
   if (!id) {
     if (tierNames.length) {

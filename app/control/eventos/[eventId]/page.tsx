@@ -8,7 +8,7 @@ import type { TierRow } from "@/lib/event-types";
 export default async function EditEventPage({ params, searchParams }: { params: Promise<{ eventId: string }>; searchParams: Promise<{ error?: string }> }) {
   const [{ eventId }, { error }, { supabase, role }] = await Promise.all([params, searchParams, getControlAccess()]);
   if (role !== "admin") return <><Link className="back-link" href="/control/eventos">← EVENTOS</Link><h1>Editar evento</h1><div className="notice">Esta acción requiere el rol administrador.</div></>;
-  const { data, error: queryError } = await supabase!.from("events").select("id,slug,name,tag,event_date,event_time,venue,city,status,lineup,schedule,ticket_tiers(id,category,name,price,capacity,sold)").eq("id", eventId).maybeSingle();
+  const { data, error: queryError } = await supabase!.from("events").select("id,slug,name,tag,event_date,event_time,venue,city,status,accent,flyer_url,music_url,lineup,schedule,ticket_tiers(id,category,name,price,capacity,sold)").eq("id", eventId).maybeSingle();
   if (!data && !queryError) notFound();
   if (queryError) return <><Link className="back-link" href="/control/eventos">← EVENTOS</Link><h1>Editar evento</h1><div className="notice">No se pudo cargar el evento. Revisa las políticas de Supabase.</div></>;
   const event = { ...data, event_time: String(data!.event_time), tiers: (data!.ticket_tiers ?? []).map((tier: TierRow) => ({ id: tier.id, category: tier.category ?? "custom", name: tier.name, price: Number(tier.price), capacity: tier.capacity, sold: tier.sold ?? 0 })) };
