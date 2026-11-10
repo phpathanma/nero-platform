@@ -5,7 +5,9 @@ Sitio para NERO EVENTS, NERO TICKETS y NERO CONTROL. Construido con Next.js y pr
 ## Requisitos
 
 - Node.js 20 o superior
-- Proyecto Supabase (opcional para ejecutar el sitio público con datos de demostración)
+- Proyecto Supabase (sin él el sitio arranca, pero sin eventos)
+
+La documentación completa está en [docs/PLATAFORMA.md](docs/PLATAFORMA.md) (qué hace la plataforma) y [docs/INSTALACION.md](docs/INSTALACION.md) (cómo montarla para una productora nueva).
 
 ## Instalar y ejecutar
 
@@ -46,7 +48,10 @@ Configura `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` en
 
 - `/` — NERO EVENTS
 - `/eventos/[slug]` — detalle de evento
-- `/tickets/[eventId]` — experiencia de NERO TICKETS
+- `/tickets/[eventId]` — redirige a las entradas del evento (enlaces antiguos)
+- `/entrada` — entrada con QR (enlace privado)
+- `/terminos` y `/privacidad` — páginas legales
+- `/control/login` — acceso del equipo
 - `/control` — resumen de operaciones
 - `/control/eventos` — catálogo y gestión de eventos
 - `/control/ventas` — pedidos e ingresos
@@ -63,7 +68,7 @@ Ejecuta `supabase/marketing-contacts.sql` en Supabase SQL Editor. Al marcar un e
 
 ## Ticket issuance and admin courtesy passes
 
-For a fresh Supabase project, run `schema.sql`, `control-policies.sql`, `marketing-contacts.sql`, then `ticket-issuance.sql`, in that order. For an existing project, rerun `control-policies.sql`, then run `marketing-contacts.sql` and `ticket-issuance.sql`. These SQL files are safe to rerun when applying function fixes. `ticket-issuance.sql` adds the secure RPCs for public Free Access claims, admin courtesy passes, ticket display, and check-in of zero-price confirmed tickets.
+For a fresh Supabase project, run `schema.sql`, `control-policies.sql`, `marketing-contacts.sql`, `ticket-issuance.sql`, `flyers-storage.sql`, then `event-music.sql`, in that order. For an existing project, rerun `control-policies.sql`, then run the others after it. Every file except `schema.sql` is safe to rerun; `schema.sql` runs only once. `ticket-issuance.sql` adds the secure RPCs for public Free Access claims, admin courtesy passes, ticket display, and check-in of zero-price confirmed tickets.
 
 The event editor offers Free Access, GA 10PM, GA All Night, VIP, and DJ Booth. Select only the categories needed and set a price and capacity. Existing categories stay attached when editing; a capacity cannot be reduced below the issued count. Free Access is limited to one per email per event. Every Free Access or courtesy ticket consumes its category capacity. Paid checkout remains disabled until a payment provider and signed webhook are added.
 
