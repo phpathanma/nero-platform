@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import "./site.css";
 
@@ -11,7 +11,11 @@ export const metadata: Metadata = {
     type: "website",
     locale: "es_PE",
   },
+  appleWebApp: { capable: true, title: "NERO", statusBarStyle: "black-translucent" },
+  icons: { apple: "/apple-touch-icon.png" },
 };
+
+export const viewport: Viewport = { themeColor: "#080808" };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return <html lang="es"><body>{children}</body></html>;

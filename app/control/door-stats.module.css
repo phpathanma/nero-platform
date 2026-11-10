@@ -1,0 +1,8 @@
+.wrap { display: grid; gap: 12px; margin: 0 0 20px; }
+.card { border: 1px solid var(--line); background: var(--panel); padding: 16px; }
+.name { display: block; color: var(--muted); font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; }
+.count { margin: 6px 0 12px; color: var(--text); font-size: 1.25rem; }
+.count strong { font-family: var(--font-display); font-size: 2.75rem; line-height: 1; color: var(--acid); }
+.count span { color: var(--muted); font-size: 1rem; }
+.bar { height: 4px; background: var(--line); overflow: hidden; }
+.fill { height: 100%; background: var(--acid); }
