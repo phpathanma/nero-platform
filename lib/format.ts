@@ -43,3 +43,21 @@ export function isRunningLow(capacity: number, sold: number): boolean {
   const remaining = capacity - sold;
   return capacity > 0 && remaining > 0 && remaining / capacity <= 0.15;
 }
+
+// Partículas que se mantienen en minúscula dentro de un nombre («María de la Cruz»).
+const NAME_PARTICLES = new Set(["de", "del", "la", "las", "los", "y"]);
+
+// Nombre del titular en Title Case: limpia espacios y capitaliza cada palabra (también tras guion o apóstrofo).
+export function titleCaseName(name: string): string {
+  return (name ?? "").trim().split(/\s+/).filter(Boolean).map((word, index) => {
+    const lower = word.toLocaleLowerCase("es-PE");
+    if (index > 0 && NAME_PARTICLES.has(lower)) return lower;
+    return lower.split(/([-'’])/).map((part) => part.charAt(0).toLocaleUpperCase("es-PE") + part.slice(1)).join("");
+  }).join(" ");
+}
+
+// Nombre del PDF descargado: quita tildes (NFD) antes de convertir a slug, así «válido» queda «valido».
+export function ticketFileName(brand: string, tier: string): string {
+  const slug = (tier ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/gi, "-").replace(/^-+|-+$/g, "");
+  return `${brand}-${slug || "entrada"}.pdf`;
+}

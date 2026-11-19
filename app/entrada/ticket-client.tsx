@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { SiteNav } from "@/app/site-nav";
-import { formatEventTime } from "@/lib/format";
+import { formatEventTime, ticketFileName, titleCaseName } from "@/lib/format";
 
 type Ticket = { status: "valid" | "used"; source: string; name: string; event: string; date: string; time: string; venue: string; city: string; tier: string };
 
@@ -22,9 +22,46 @@ function calendarUrl(ticket: Ticket) {
   return `https://calendar.google.com/calendar/render?${query}`;
 }
 
+// Helvetica est\u00e1ndar solo cubre WinAnsi: se conservan ASCII, las vocales con tilde o di\u00e9resis, la \u00ab\u00f1\u00bb y el \u00ab\u00b7\u00bb.
+// Cualquier otro car\u00e1cter pierde su diacr\u00edtico (\u00e7 \u2192 c) o se cambia por un espacio.
+const PDF_KEEP = /[\x20-\x7E\u00e1\u00e9\u00ed\u00f3\u00fa\u00fc\u00f1\u00c1\u00c9\u00cd\u00d3\u00da\u00dc\u00d1\u00b7]/;
 function pdfText(value: string) {
-  return value.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^\x20-\x7E]/g, " ");
+  return Array.from(value.normalize("NFC"), (char) => PDF_KEEP.test(char) ? char : char.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^\x20-\x7E]/g, " ")).join("");
 }
+
+type PdfFont = { widthOfTextAtSize: (text: string, size: number) => number };
+
+// Reparte el texto en l\u00edneas que caben en maxWidth sin cortarlo; una palabra m\u00e1s ancha que la caja se parte por caracteres.
+function fitLines(text: string, font: PdfFont, size: number, maxWidth: number): string[] {
+  const lines: string[] = [];
+  let line = "";
+  for (const word of text.split(/\s+/).filter(Boolean)) {
+    let rest = word;
+    while (rest.length > 1 && font.widthOfTextAtSize(rest, size) > maxWidth) {
+      let cut = rest.length - 1;
+      while (cut > 1 && font.widthOfTextAtSize(rest.slice(0, cut), size) > maxWidth) cut--;
+      if (line) { lines.push(line); line = ""; }
+      lines.push(rest.slice(0, cut));
+      rest = rest.slice(cut);
+    }
+    const next = line ? `${line} ${rest}` : rest;
+    if (line && font.widthOfTextAtSize(next, size) > maxWidth) { lines.push(line); line = rest; } else line = next;
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
+// Usa el primer tama\u00f1o con el que el texto entra en maxLines; si ninguno alcanza, el m\u00e1s peque\u00f1o con todas sus l\u00edneas (nunca trunca).
+function fitText(text: string, font: PdfFont, sizes: number[], maxWidth: number, maxLines: number) {
+  for (const size of sizes) {
+    const lines = fitLines(text, font, size, maxWidth);
+    if (lines.length <= maxLines) return { size, lines };
+  }
+  const size = sizes[sizes.length - 1];
+  return { size, lines: fitLines(text, font, size, maxWidth) };
+}
+
+const PDF_LINE_HEIGHT = 1.15;
 
 export function TicketClient() {
   const [token, setToken] = useState("");
@@ -66,12 +103,28 @@ export function TicketClient() {
       page.drawRectangle({ x: 0, y: 0, width: 340, height: 540, color: rgb(0.035, 0.035, 0.035) });
       page.drawRectangle({ x: 0, y: 512, width: 340, height: 28, color: acid });
       page.drawText("N E R O   /   T I C K E T S", { x: 24, y: 521, size: 10, font: bold, color: rgb(0.04, 0.04, 0.04) });
-      page.drawText(pdfText(ticket.event).slice(0, 42), { x: 24, y: 477, size: 19, font: bold, color: rgb(0.96, 0.96, 0.93), maxWidth: 292 });
-      page.drawText(pdfText(`${dateLabel(ticket.date)}  ·  ${ticket.time}`), { x: 24, y: 455, size: 10, font: regular, color: rgb(0.7, 0.7, 0.68) });
-      page.drawText(pdfText(`${ticket.venue}, ${ticket.city}`).slice(0, 54), { x: 24, y: 437, size: 10, font: regular, color: rgb(0.7, 0.7, 0.68), maxWidth: 292 });
+      // Nombre del evento: hasta 2 líneas, reduciendo el tamaño antes de seguir bajando.
+      const eventFit = fitText(pdfText(ticket.event), bold, [19, 16, 14], 292, 2);
+      const eventLead = eventFit.size * PDF_LINE_HEIGHT;
+      eventFit.lines.forEach((line, i) => page.drawText(line, { x: 24, y: 477 - i * eventLead, size: eventFit.size, font: bold, color: rgb(0.96, 0.96, 0.93) }));
+      const metaY = 477 - (eventFit.lines.length - 1) * eventLead - 22;
+      page.drawText(pdfText(`${dateLabel(ticket.date)} · ${formatEventTime(ticket.time)}`), { x: 24, y: metaY, size: 10, font: regular, color: rgb(0.7, 0.7, 0.68) });
+      page.drawText(pdfText(`${ticket.venue}, ${ticket.city}`).slice(0, 54), { x: 24, y: metaY - 18, size: 10, font: regular, color: rgb(0.7, 0.7, 0.68), maxWidth: 292 });
       page.drawRectangle({ x: 24, y: 394, width: 292, height: 1, color: rgb(0.2, 0.2, 0.19) });
-      page.drawText(pdfText(ticket.tier).slice(0, 36), { x: 24, y: 365, size: 17, font: bold, color: acid, maxWidth: 292 });
-      page.drawText(pdfText(`A nombre de: ${ticket.name}`).slice(0, 54), { x: 24, y: 345, size: 10, font: regular, color: rgb(0.9, 0.9, 0.87), maxWidth: 292 });
+      // Tarifa completa (hasta 3 líneas) y titular debajo, siempre por encima del QR (y = 298).
+      const nameFit = fitText(pdfText(`A nombre de: ${titleCaseName(ticket.name)}`), regular, [10, 9], 292, 2);
+      const nameLead = nameFit.size * 1.2;
+      const tierText = pdfText(ticket.tier);
+      let tierFit = { size: 12, lines: fitLines(tierText, bold, 12, 292) };
+      for (const size of [17, 15, 13, 12]) {
+        const lines = fitLines(tierText, bold, size, 292);
+        const lastNameY = 368 - (lines.length - 1) * size * PDF_LINE_HEIGHT - 20 - (nameFit.lines.length - 1) * nameLead;
+        if (lines.length <= 3 && lastNameY >= 308) { tierFit = { size, lines }; break; }
+      }
+      const tierLead = tierFit.size * PDF_LINE_HEIGHT;
+      tierFit.lines.forEach((line, i) => page.drawText(line, { x: 24, y: 368 - i * tierLead, size: tierFit.size, font: bold, color: acid }));
+      const nameY = 368 - (tierFit.lines.length - 1) * tierLead - 20;
+      nameFit.lines.forEach((line, i) => page.drawText(line, { x: 24, y: nameY - i * nameLead, size: nameFit.size, font: regular, color: rgb(0.9, 0.9, 0.87) }));
       const qr = await QRCode.toDataURL(token, { errorCorrectionLevel: "H", margin: 2, width: 600, color: { dark: "#080808", light: "#ffffff" } });
       const qrPdfImage = await pdf.embedPng(qr);
       page.drawImage(qrPdfImage, { x: 87, y: 132, width: 166, height: 166 });
@@ -82,7 +135,7 @@ export function TicketClient() {
       new Uint8Array(arrayBuffer).set(bytes);
       const blob = new Blob([arrayBuffer], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
-      const link = document.createElement("a"); link.href = url; link.download = `NERO-${ticket.tier.replace(/[^a-z0-9]+/gi, "-")}.pdf`; link.click();
+      const link = document.createElement("a"); link.href = url; link.download = ticketFileName("NERO", ticket.tier); link.click();
       window.setTimeout(() => URL.revokeObjectURL(url), 30000);
     } finally { setDownloading(false); }
   }

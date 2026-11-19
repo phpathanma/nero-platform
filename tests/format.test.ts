@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { eventDateParts, formatEventDate, formatEventTime, formatPrice, isRunningLow } from "@/lib/format";
+import { eventDateParts, formatEventDate, formatEventTime, formatPrice, isRunningLow, ticketFileName, titleCaseName } from "@/lib/format";
 
 describe("formato de fechas y precios", () => {
   it("descompone una fecha de calendario sin desfase horario", () => {
@@ -30,5 +30,20 @@ describe("formato de fechas y precios", () => {
     expect(isRunningLow(100, 50)).toBe(false);
     expect(isRunningLow(100, 100)).toBe(false);
     expect(isRunningLow(0, 0)).toBe(false);
+  });
+});
+
+describe("nombre del titular y archivo PDF", () => {
+  it("pone el nombre en Title Case y limpia espacios extra", () => {
+    expect(titleCaseName("  maría   de la  cruz ")).toBe("María de la Cruz");
+    expect(titleCaseName("JOSÉ LUIS o'neill-pérez")).toBe("José Luis O'Neill-Pérez");
+    expect(titleCaseName("de la torre")).toBe("De la Torre");
+    expect(titleCaseName("   ")).toBe("");
+  });
+
+  it("quita tildes antes de crear el slug del archivo", () => {
+    expect(ticketFileName("NERO", "Universitarios con carnet · válido hasta las 10 PM")).toBe("NERO-Universitarios-con-carnet-valido-hasta-las-10-PM.pdf");
+    expect(ticketFileName("NERO", "Niños & Señoras")).toBe("NERO-Ninos-Senoras.pdf");
+    expect(ticketFileName("NERO", " ·· ")).toBe("NERO-entrada.pdf");
   });
 });
