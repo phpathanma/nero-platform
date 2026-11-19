@@ -3,6 +3,7 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Script from "next/script";
+import { getAttribution, track } from "@/lib/track";
 
 type TurnstileOptions = { sitekey: string; action: string; callback: (token: string) => void; "expired-callback": () => void; "error-callback": () => void };
 
@@ -46,10 +47,11 @@ export function FreeTicketForm({ tierId }: { tierId: string }) {
     try {
       const response = await fetch("/api/tickets/free", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tierId, name: form.get("name"), phone: form.get("phone"), email: form.get("email"), marketingConsent: form.get("marketing") === "on", captchaToken: captcha }),
+        body: JSON.stringify({ tierId, name: form.get("name"), phone: form.get("phone"), email: form.get("email"), marketingConsent: form.get("marketing") === "on", captchaToken: captcha, ...getAttribution() }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error ?? "No se pudo emitir la entrada.");
+      track("free_access_submit", result.eventId ? { eventId: result.eventId } : {});
       setIssued({ token: result.token, emailSent: result.emailSent });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "No se pudo emitir la entrada.");

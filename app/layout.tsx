@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import "./site.css";
+import { AnalyticsTracker } from "./analytics-tracker";
 
 export const metadata: Metadata = {
   title: { default: "NERO — Electronic music experiences", template: "%s | NERO" },
@@ -18,5 +19,5 @@ export const metadata: Metadata = {
 export const viewport: Viewport = { themeColor: "#080808" };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="es"><body>{children}</body></html>;
+  return <html lang="es"><body>{children}<AnalyticsTracker /></body></html>;
 }

@@ -8,12 +8,13 @@ const items = [
   { href: "/control", label: "Resumen", icon: "◫" },
   { href: "/control/eventos", label: "Eventos", icon: "✳" },
   { href: "/control/ventas", label: "Ventas", icon: "↗" },
+  { href: "/control/metricas", label: "Métricas", icon: "▤" },
   { href: "/control/accesos", label: "Accesos QR", icon: "▦" },
 ];
 
 export function ControlNav({ role }: { role: "admin" | "door_staff" }) {
   const pathname = usePathname();
-  const visibleItems = role === "admin" ? items : items.filter((item) => !["/control/eventos", "/control/ventas"].includes(item.href));
+  const visibleItems = role === "admin" ? items : items.filter((item) => !["/control/eventos", "/control/ventas", "/control/metricas"].includes(item.href));
   return <aside className="sidebar">
     <Link className="logo" href="/">NERO</Link>
     <span className="eyebrow">Control · {role === "admin" ? "Administrador" : "Puerta"}</span>

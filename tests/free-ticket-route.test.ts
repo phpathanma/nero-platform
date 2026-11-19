@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const rpc = vi.fn();
-const createAdminClient = vi.fn<() => { rpc: typeof rpc } | null>(() => ({ rpc }));
+const eq = vi.fn(async (): Promise<{ error: { code: string; message: string } | null }> => ({ error: null }));
+const update = vi.fn(() => ({ eq }));
+const from = vi.fn(() => ({ update }));
+const createAdminClient = vi.fn<() => { rpc: typeof rpc; from: typeof from } | null>(() => ({ rpc, from }));
 const sendTicketEmail = vi.fn(async () => true);
 
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient }));
@@ -16,7 +19,7 @@ const human = { success: true, action: "free_ticket", hostname: "nero.test" };
 
 beforeEach(() => {
   vi.clearAllMocks();
-  createAdminClient.mockReturnValue({ rpc });
+  createAdminClient.mockReturnValue({ rpc, from });
   vi.stubEnv("NODE_ENV", "production");
   vi.stubEnv("TURNSTILE_SECRET_KEY", "secret");
   vi.stubEnv("NEXT_PUBLIC_TURNSTILE_SITE_KEY", "site");
@@ -61,6 +64,27 @@ describe("POST /api/tickets/free", () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({ status: "issued", token: "tok", emailSent: true });
     expect(rpc).toHaveBeenCalledWith("issue_free_access_ticket", expect.objectContaining({ p_buyer_email: "ana@example.com", p_marketing_consent: false }));
+    expect(sendTicketEmail).toHaveBeenCalledOnce();
+    expect(from).not.toHaveBeenCalled(); // sin ref ni UTM no se toca el ticket
+  });
+
+  it("guarda ref y UTM limpios en el ticket, sin cambiar la llamada a la RPC, y devuelve el evento", async () => {
+    rpc.mockResolvedValue({ data: { status: "issued", token: "tok", ticket_id: "ticket-1", event_id: "evento-1" }, error: null });
+    const response = await post({ ...valid, ref: "Promotor-Ana", utmSource: "instagram", utmCampaign: "<raro>" });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ status: "issued", eventId: "evento-1" });
+    expect(rpc).toHaveBeenCalledWith("issue_free_access_ticket", { p_tier_id: valid.tierId, p_buyer_name: "Ana Pérez", p_buyer_email: "ana@example.com", p_buyer_phone: "+51999999999", p_marketing_consent: false });
+    expect(from).toHaveBeenCalledWith("tickets");
+    expect(update).toHaveBeenCalledWith({ ref: "promotor-ana", utm_source: "instagram", utm_campaign: null });
+    expect(eq).toHaveBeenCalledWith("id", "ticket-1");
+  });
+
+  it("si falla guardar la atribución, la entrada se emite igual", async () => {
+    rpc.mockResolvedValue({ data: { status: "issued", token: "tok", ticket_id: "ticket-1" }, error: null });
+    eq.mockResolvedValueOnce({ error: { code: "42703", message: "column ref does not exist" } });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const response = await post({ ...valid, ref: "promotor-ana" });
+    expect(response.status).toBe(200);
     expect(sendTicketEmail).toHaveBeenCalledOnce();
   });
 

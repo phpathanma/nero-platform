@@ -32,7 +32,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
 
   return <div className="tinted" style={{ "--event-accent": event.accent } as React.CSSProperties}>
     <SiteNav />
-    <main className="wrap event-layout">
+    <main className="wrap event-layout" data-nero-event={event.id}>
       <aside className="event-aside"><Flyer src={event.flyer} name={event.name} priority /></aside>
 
       <div className="event-main">
@@ -60,7 +60,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
               <b className={`ticket-row-price${free ? " is-accent" : ""}`}>{formatPrice(tier.price, free)}</b>
               {remaining === 0 ? <span className="btn secondary" aria-disabled="true">AGOTADO</span>
                 : free ? <FreeAccess tierId={tier.id} />
-                  : <a className="btn secondary" href={whatsappLink(`Hola NERO, quiero reservar una entrada ${tier.name} para ${event.name}.`)} target="_blank" rel="noreferrer">RESERVAR POR WHATSAPP</a>}
+                  : <a className="btn secondary" data-track="whatsapp_click" href={whatsappLink(`Hola NERO, quiero reservar una entrada ${tier.name} para ${event.name}.`)} target="_blank" rel="noreferrer">RESERVAR POR WHATSAPP</a>}
             </div>;
           })}</div>
           {event.tiers.some((tier) => tier.price > 0) && <p className="muted ticket-note">Las entradas con precio se reservan por WhatsApp. Te confirmamos el pago y te enviamos tu entrada con QR.</p>}

@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
+import { cleanAttribution } from "@/lib/analytics";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendTicketEmail } from "@/lib/tickets/email";
 
-type IssueResult = { status: string; message?: string; token?: string; event?: string; tier?: string; date?: string; time?: string; venue?: string; city?: string; ticket_id?: string };
+type IssueResult = { status: string; message?: string; token?: string; event?: string; event_id?: string; tier?: string; date?: string; time?: string; venue?: string; city?: string; ticket_id?: string };
 
 export async function POST(request: Request) {
   let body: Record<string, unknown>;
@@ -53,6 +54,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: result.message ?? "No se pudo emitir la entrada." }, { status });
   }
 
+  // Atribución (ref / UTM) del link por el que llegó: se guarda aparte de la RPC y nunca bloquea la emisión.
+  const { ref, utmSource, utmCampaign } = cleanAttribution(body);
+  if (result.ticket_id && (ref || utmSource || utmCampaign)) {
+    const { error: attributionError } = await supabase.from("tickets")
+      .update({ ref: ref ?? null, utm_source: utmSource ?? null, utm_campaign: utmCampaign ?? null })
+      .eq("id", result.ticket_id);
+    if (attributionError) console.error("[tickets/free] attribution update failed", { code: attributionError.code, message: attributionError.message });
+  }
+
   const emailSent = await sendTicketEmail({ to: email, name, event: result.event ?? "NERO", tier: result.tier ?? "Free Access", date: result.date ?? "", time: result.time ?? "", venue: result.venue ?? "", city: result.city ?? "", token: result.token });
-  return NextResponse.json({ status: "issued", token: result.token, ticketId: result.ticket_id, emailSent });
+  return NextResponse.json({ status: "issued", token: result.token, ticketId: result.ticket_id, eventId: result.event_id, emailSent });
 }
