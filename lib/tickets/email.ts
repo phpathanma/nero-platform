@@ -1,7 +1,7 @@
 import "server-only";
 
 type TicketEmail = {
-  to: string; name: string; event: string; tier: string; date: string; time: string; venue: string; city: string; token: string;
+  to: string; name: string; event: string; tier: string; date: string; time: string; venue: string; city: string; token: string; condition?: string;
 };
 
 function escapeHtml(value: string) {
@@ -15,7 +15,7 @@ export async function sendTicketEmail(ticket: TicketEmail) {
 
   const configuredSite = process.env.NEXT_PUBLIC_SITE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
   const ticketUrl = `${configuredSite.replace(/\/$/, "")}/entrada#${encodeURIComponent(ticket.token)}`;
-  const html = `<div style="background:#080808;color:#f5f4ed;padding:32px;font-family:Arial,sans-serif"><p style="color:#d4ff3f;letter-spacing:4px">NERO TICKETS</p><h1>${escapeHtml(ticket.event)}</h1><p>${escapeHtml(ticket.date)} · ${escapeHtml(ticket.time)}<br>${escapeHtml(ticket.venue)}, ${escapeHtml(ticket.city)}</p><p>Entrada: <strong>${escapeHtml(ticket.tier)}</strong><br>A nombre de: ${escapeHtml(ticket.name)}</p><p><a href="${ticketUrl}" style="display:inline-block;background:#d4ff3f;color:#080808;padding:14px 20px;text-decoration:none;font-weight:bold">ABRIR Y DESCARGAR ENTRADA</a></p><p style="color:#aaa;font-size:12px">Este enlace permite acceder a la entrada. No lo compartas públicamente.</p></div>`;
+  const html = `<div style="background:#080808;color:#f5f4ed;padding:32px;font-family:Arial,sans-serif"><p style="color:#d4ff3f;letter-spacing:4px">NERO TICKETS</p><h1>${escapeHtml(ticket.event)}</h1><p>${escapeHtml(ticket.date)} · ${escapeHtml(ticket.time)}<br>${escapeHtml(ticket.venue)}, ${escapeHtml(ticket.city)}</p><p>Entrada: <strong>${escapeHtml(ticket.tier)}</strong><br>A nombre de: ${escapeHtml(ticket.name)}</p>${ticket.condition ? `<p style="color:#d4ff3f;font-size:13px">${escapeHtml(ticket.condition)}.</p>` : ""}<p><a href="${ticketUrl}" style="display:inline-block;background:#d4ff3f;color:#080808;padding:14px 20px;text-decoration:none;font-weight:bold">ABRIR Y DESCARGAR ENTRADA</a></p><p style="color:#aaa;font-size:12px">Este enlace permite acceder a la entrada. No lo compartas públicamente.</p></div>`;
   try {
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",

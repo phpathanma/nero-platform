@@ -126,6 +126,18 @@
 .ticket-note { font-size: 13px; margin: 18px 0 0; }
 .badge { font: 500 10px/1 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; background: var(--ink); color: #050505; padding: 6px 8px; }
 
+/* Pase único "Free con Consumo" */
+.free-pass-card { max-width: 560px; margin: 0 auto; padding: clamp(24px, 4vw, 36px); border: 1px solid var(--ink); background: #0c0c0c; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 14px; }
+.free-pass-card .badge { background: var(--acid); }
+.free-pass-card h3 { margin: 4px 0 0; font-family: var(--font-poster); font-weight: 800; font-stretch: 125%; text-transform: uppercase; letter-spacing: -.02em; font-size: clamp(30px, 6vw, 46px); line-height: .96; color: var(--acid); }
+.free-pass-condition { margin: 0; max-width: 380px; color: #cfcfca; font: 500 13px/1.55 var(--font-mono); }
+.free-pass-card .availability { width: 100%; max-width: 280px; margin-top: 4px; }
+.free-pass-card > .btn { width: 100%; max-width: 320px; }
+.free-pass-card .btn[aria-disabled="true"] { opacity: .5; cursor: not-allowed; pointer-events: none; }
+.free-pass-form { width: 100%; text-align: left; }
+.free-pass-form > p { margin: 0; }
+.buy-bar b { text-transform: uppercase; }
+
 .lineup-big { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--rule); font-size: clamp(24px, 3.6vw, 40px); line-height: 1; }
 .lineup-big li { padding: 16px 0; border-bottom: 1px solid var(--rule); }
 .location-name { font-size: 19px; font-weight: 600; margin: 0 0 20px; }
@@ -152,6 +164,7 @@
 .ticket-pass-top p { color: #1c1c1c; font: 500 13px/1.7 var(--font-mono); margin-bottom: 0; }
 .ticket-pass-tier { font-family: var(--font-poster); font-weight: 800; font-stretch: 125%; letter-spacing: -.02em; font-size: clamp(22px, 6vw, 30px); }
 .ticket-pass-qr { width: min(300px, 100%); }
+.ticket-pass-condition { max-width: 320px; margin: 6px auto 0; color: var(--acid, #d4ff3f); font: 600 13px/1.5 var(--font-mono); text-wrap: balance; }
 .ticket-pass-calendar { grid-column: 1 / -1; }
 .ticket-pass-wrap > .btn { margin-top: 12px; }
 

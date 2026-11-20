@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { FREE_PASS_NAME } from "@/lib/free-pass";
 import { createClient } from "@/lib/supabase/server";
 
 export async function POST(request: Request) {
@@ -13,5 +14,7 @@ export async function POST(request: Request) {
   if (error) return NextResponse.json({ error: "No se pudo validar la entrada. Revisa la migración de entradas." }, { status: 503 });
   const result = data as Record<string, unknown>;
   if (!["valid", "used"].includes(String(result.status))) return NextResponse.json({ error: String(result.message ?? "Entrada no válida.") }, { status: 404 });
-  return NextResponse.json({ ticket: result }, { headers: { "Cache-Control": "private, no-store, max-age=0" } });
+  // Las entradas Free Access solo salen del tier free_access: se muestran siempre con el nombre del pase.
+  const ticket = result.source === "free_access" ? { ...result, tier: FREE_PASS_NAME } : result;
+  return NextResponse.json({ ticket }, { headers: { "Cache-Control": "private, no-store, max-age=0" } });
 }

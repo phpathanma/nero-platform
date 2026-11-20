@@ -1,11 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { FREE_PASS_CONDITION, FREE_PASS_NAME } from "@/lib/free-pass";
 
 const rpc = vi.fn();
 const eq = vi.fn(async (): Promise<{ error: { code: string; message: string } | null }> => ({ error: null }));
 const update = vi.fn(() => ({ eq }));
 const from = vi.fn(() => ({ update }));
 const createAdminClient = vi.fn<() => { rpc: typeof rpc; from: typeof from } | null>(() => ({ rpc, from }));
-const sendTicketEmail = vi.fn(async () => true);
+const sendTicketEmail = vi.fn<(ticket: Record<string, unknown>) => Promise<boolean>>(async () => true);
 
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient }));
 vi.mock("@/lib/tickets/email", () => ({ sendTicketEmail }));
@@ -65,6 +66,7 @@ describe("POST /api/tickets/free", () => {
     expect(await response.json()).toMatchObject({ status: "issued", token: "tok", emailSent: true });
     expect(rpc).toHaveBeenCalledWith("issue_free_access_ticket", expect.objectContaining({ p_buyer_email: "ana@example.com", p_marketing_consent: false }));
     expect(sendTicketEmail).toHaveBeenCalledOnce();
+    expect(sendTicketEmail).toHaveBeenCalledWith(expect.objectContaining({ tier: FREE_PASS_NAME, condition: FREE_PASS_CONDITION }));
     expect(from).not.toHaveBeenCalled(); // sin ref ni UTM no se toca el ticket
   });
 

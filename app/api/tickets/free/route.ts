@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { cleanAttribution } from "@/lib/analytics";
+import { FREE_PASS_CONDITION, FREE_PASS_NAME } from "@/lib/free-pass";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendTicketEmail } from "@/lib/tickets/email";
 
@@ -63,6 +64,6 @@ export async function POST(request: Request) {
     if (attributionError) console.error("[tickets/free] attribution update failed", { code: attributionError.code, message: attributionError.message });
   }
 
-  const emailSent = await sendTicketEmail({ to: email, name, event: result.event ?? "NERO", tier: result.tier ?? "Free Access", date: result.date ?? "", time: result.time ?? "", venue: result.venue ?? "", city: result.city ?? "", token: result.token });
+  const emailSent = await sendTicketEmail({ to: email, name, event: result.event ?? "NERO", tier: FREE_PASS_NAME, condition: FREE_PASS_CONDITION, date: result.date ?? "", time: result.time ?? "", venue: result.venue ?? "", city: result.city ?? "", token: result.token });
   return NextResponse.json({ status: "issued", token: result.token, ticketId: result.ticket_id, eventId: result.event_id, emailSent });
 }

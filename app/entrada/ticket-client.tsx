@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { SiteNav } from "@/app/site-nav";
-import { formatEventTime, ticketFileName, titleCaseName } from "@/lib/format";
+import { formatEventTime, ticketFileName } from "@/lib/format";
+import { FREE_PASS_CONDITION, FREE_PASS_TITLE } from "@/lib/free-pass";
 
 type Ticket = { status: "valid" | "used"; source: string; name: string; event: string; date: string; time: string; venue: string; city: string; tier: string };
 
@@ -22,47 +23,6 @@ function calendarUrl(ticket: Ticket) {
   return `https://calendar.google.com/calendar/render?${query}`;
 }
 
-// Helvetica est\u00e1ndar solo cubre WinAnsi: se conservan ASCII, las vocales con tilde o di\u00e9resis, la \u00ab\u00f1\u00bb y el \u00ab\u00b7\u00bb.
-// Cualquier otro car\u00e1cter pierde su diacr\u00edtico (\u00e7 \u2192 c) o se cambia por un espacio.
-const PDF_KEEP = /[\x20-\x7E\u00e1\u00e9\u00ed\u00f3\u00fa\u00fc\u00f1\u00c1\u00c9\u00cd\u00d3\u00da\u00dc\u00d1\u00b7]/;
-function pdfText(value: string) {
-  return Array.from(value.normalize("NFC"), (char) => PDF_KEEP.test(char) ? char : char.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^\x20-\x7E]/g, " ")).join("");
-}
-
-type PdfFont = { widthOfTextAtSize: (text: string, size: number) => number };
-
-// Reparte el texto en l\u00edneas que caben en maxWidth sin cortarlo; una palabra m\u00e1s ancha que la caja se parte por caracteres.
-function fitLines(text: string, font: PdfFont, size: number, maxWidth: number): string[] {
-  const lines: string[] = [];
-  let line = "";
-  for (const word of text.split(/\s+/).filter(Boolean)) {
-    let rest = word;
-    while (rest.length > 1 && font.widthOfTextAtSize(rest, size) > maxWidth) {
-      let cut = rest.length - 1;
-      while (cut > 1 && font.widthOfTextAtSize(rest.slice(0, cut), size) > maxWidth) cut--;
-      if (line) { lines.push(line); line = ""; }
-      lines.push(rest.slice(0, cut));
-      rest = rest.slice(cut);
-    }
-    const next = line ? `${line} ${rest}` : rest;
-    if (line && font.widthOfTextAtSize(next, size) > maxWidth) { lines.push(line); line = rest; } else line = next;
-  }
-  if (line) lines.push(line);
-  return lines;
-}
-
-// Usa el primer tama\u00f1o con el que el texto entra en maxLines; si ninguno alcanza, el m\u00e1s peque\u00f1o con todas sus l\u00edneas (nunca trunca).
-function fitText(text: string, font: PdfFont, sizes: number[], maxWidth: number, maxLines: number) {
-  for (const size of sizes) {
-    const lines = fitLines(text, font, size, maxWidth);
-    if (lines.length <= maxLines) return { size, lines };
-  }
-  const size = sizes[sizes.length - 1];
-  return { size, lines: fitLines(text, font, size, maxWidth) };
-}
-
-const PDF_LINE_HEIGHT = 1.15;
-
 export function TicketClient() {
   const [token, setToken] = useState("");
   const [ticket, setTicket] = useState<Ticket | null>(null);
@@ -70,6 +30,7 @@ export function TicketClient() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
+  const isFreePass = ticket?.source === "free_access";
 
   useEffect(() => {
     const secret = window.location.hash.slice(1);
@@ -94,43 +55,8 @@ export function TicketClient() {
     if (!ticket || !token) return;
     setDownloading(true);
     try {
-      const [{ PDFDocument, StandardFonts, rgb }, { default: QRCode }] = await Promise.all([import("pdf-lib"), import("qrcode")]);
-      const pdf = await PDFDocument.create();
-      const page = pdf.addPage([340, 540]);
-      const regular = await pdf.embedFont(StandardFonts.Helvetica);
-      const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
-      const acid = rgb(0.83, 1, 0.25);
-      page.drawRectangle({ x: 0, y: 0, width: 340, height: 540, color: rgb(0.035, 0.035, 0.035) });
-      page.drawRectangle({ x: 0, y: 512, width: 340, height: 28, color: acid });
-      page.drawText("N E R O   /   T I C K E T S", { x: 24, y: 521, size: 10, font: bold, color: rgb(0.04, 0.04, 0.04) });
-      // Nombre del evento: hasta 2 líneas, reduciendo el tamaño antes de seguir bajando.
-      const eventFit = fitText(pdfText(ticket.event), bold, [19, 16, 14], 292, 2);
-      const eventLead = eventFit.size * PDF_LINE_HEIGHT;
-      eventFit.lines.forEach((line, i) => page.drawText(line, { x: 24, y: 477 - i * eventLead, size: eventFit.size, font: bold, color: rgb(0.96, 0.96, 0.93) }));
-      const metaY = 477 - (eventFit.lines.length - 1) * eventLead - 22;
-      page.drawText(pdfText(`${dateLabel(ticket.date)} · ${formatEventTime(ticket.time)}`), { x: 24, y: metaY, size: 10, font: regular, color: rgb(0.7, 0.7, 0.68) });
-      page.drawText(pdfText(`${ticket.venue}, ${ticket.city}`).slice(0, 54), { x: 24, y: metaY - 18, size: 10, font: regular, color: rgb(0.7, 0.7, 0.68), maxWidth: 292 });
-      page.drawRectangle({ x: 24, y: 394, width: 292, height: 1, color: rgb(0.2, 0.2, 0.19) });
-      // Tarifa completa (hasta 3 líneas) y titular debajo, siempre por encima del QR (y = 298).
-      const nameFit = fitText(pdfText(`A nombre de: ${titleCaseName(ticket.name)}`), regular, [10, 9], 292, 2);
-      const nameLead = nameFit.size * 1.2;
-      const tierText = pdfText(ticket.tier);
-      let tierFit = { size: 12, lines: fitLines(tierText, bold, 12, 292) };
-      for (const size of [17, 15, 13, 12]) {
-        const lines = fitLines(tierText, bold, size, 292);
-        const lastNameY = 368 - (lines.length - 1) * size * PDF_LINE_HEIGHT - 20 - (nameFit.lines.length - 1) * nameLead;
-        if (lines.length <= 3 && lastNameY >= 308) { tierFit = { size, lines }; break; }
-      }
-      const tierLead = tierFit.size * PDF_LINE_HEIGHT;
-      tierFit.lines.forEach((line, i) => page.drawText(line, { x: 24, y: 368 - i * tierLead, size: tierFit.size, font: bold, color: acid }));
-      const nameY = 368 - (tierFit.lines.length - 1) * tierLead - 20;
-      nameFit.lines.forEach((line, i) => page.drawText(line, { x: 24, y: nameY - i * nameLead, size: nameFit.size, font: regular, color: rgb(0.9, 0.9, 0.87) }));
-      const qr = await QRCode.toDataURL(token, { errorCorrectionLevel: "H", margin: 2, width: 600, color: { dark: "#080808", light: "#ffffff" } });
-      const qrPdfImage = await pdf.embedPng(qr);
-      page.drawImage(qrPdfImage, { x: 87, y: 132, width: 166, height: 166 });
-      page.drawText(ticket.status === "used" ? "ENTRADA YA UTILIZADA" : "PRESENTA ESTE QR EN LA PUERTA", { x: 24, y: 105, size: 10, font: bold, color: ticket.status === "used" ? rgb(1, 0.5, 0.4) : rgb(0.9, 0.9, 0.87), maxWidth: 292 });
-      page.drawText("El código permite un solo acceso. No compartas esta entrada.", { x: 24, y: 84, size: 8, font: regular, color: rgb(0.62, 0.62, 0.6), maxWidth: 292 });
-      const bytes = await pdf.save();
+      const { buildTicketPdf } = await import("@/lib/tickets/pdf");
+      const { bytes } = await buildTicketPdf({ ticket, token, dateText: dateLabel(ticket.date), condition: isFreePass ? FREE_PASS_CONDITION : undefined });
       const arrayBuffer = new ArrayBuffer(bytes.byteLength);
       new Uint8Array(arrayBuffer).set(bytes);
       const blob = new Blob([arrayBuffer], { type: "application/pdf" });
@@ -152,8 +78,8 @@ export function TicketClient() {
       <span className="eyebrow">NERO TICKETS</span><h1>Tu entrada</h1>
       {loading ? <div className="module-empty">Cargando entrada segura…</div> : error ? <><div className="notice" role="alert">{error}</div><Link className="btn secondary" href="/">VOLVER AL INICIO</Link></> : ticket ? <>
         <article className="ticket-pass">
-          <div className="ticket-pass-top"><span className="eyebrow">{ticket.source === "courtesy" ? "CORTESÍA" : ticket.source === "free_access" ? "FREE ACCESS" : "ACCESO CONFIRMADO"}</span><h2>{ticket.event}</h2><p>{dateLabel(ticket.date)} · {formatEventTime(ticket.time)}<br />{ticket.venue}, {ticket.city}</p></div>
-          <div className="ticket-pass-body"><span className="ticket-pass-tier">{ticket.tier}</span><p>A nombre de <b>{ticket.name}</b></p><div className="ticket-pass-qr">{qrImage ? <img src={qrImage} alt="Código QR privado de la entrada" /> : <span>Preparando QR…</span>}<small>{ticket.status === "used" ? "YA UTILIZADA" : "UN SOLO ACCESO"}</small></div><p className="ticket-pass-note">Guarda esta entrada. No compartas el QR: permite ingresar al evento.</p></div>
+          <div className="ticket-pass-top"><span className="eyebrow">{ticket.source === "courtesy" ? "CORTESÍA" : ticket.source === "free_access" ? FREE_PASS_TITLE.toUpperCase() : "ACCESO CONFIRMADO"}</span><h2>{ticket.event}</h2><p>{dateLabel(ticket.date)} · {formatEventTime(ticket.time)}<br />{ticket.venue}, {ticket.city}</p></div>
+          <div className="ticket-pass-body"><span className="ticket-pass-tier">{ticket.tier}</span><p>A nombre de <b>{ticket.name}</b></p><div className="ticket-pass-qr">{qrImage ? <img src={qrImage} alt="Código QR privado de la entrada" /> : <span>Preparando QR…</span>}<small>{ticket.status === "used" ? "YA UTILIZADA" : "UN SOLO ACCESO"}</small></div>{isFreePass && <p className="ticket-pass-condition">{FREE_PASS_CONDITION}.</p>}<p className="ticket-pass-note">Guarda esta entrada. No compartas el QR: permite ingresar al evento.</p></div>
         </article>
         <div className="ticket-pass-actions"><button className="btn" onClick={downloadPdf} disabled={downloading || ticket.status === "used"}>{downloading ? "PREPARANDO PDF…" : "DESCARGAR ENTRADA PDF"}</button><button className="btn secondary" onClick={shareTicket}>COMPARTIR / GUARDAR</button>{calendarUrl(ticket) && <a className="btn secondary ticket-pass-calendar" href={calendarUrl(ticket)!} target="_blank" rel="noreferrer">AÑADIR AL CALENDARIO</a>}</div>
       </> : null}

@@ -3,6 +3,7 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Script from "next/script";
+import { FREE_PASS_CTA, FREE_PASS_TITLE } from "@/lib/free-pass";
 import { getAttribution, track } from "@/lib/track";
 
 type TurnstileOptions = { sitekey: string; action: string; callback: (token: string) => void; "expired-callback": () => void; "error-callback": () => void };
@@ -53,6 +54,8 @@ export function FreeTicketForm({ tierId }: { tierId: string }) {
       if (!response.ok) throw new Error(result.error ?? "No se pudo emitir la entrada.");
       track("free_access_submit", result.eventId ? { eventId: result.eventId } : {});
       setIssued({ token: result.token, emailSent: result.emailSent });
+      // Abre el QR al instante en esta misma pestaña (una pestaña nueva la bloquearía el navegador).
+      window.location.assign(`/entrada#${result.token}`);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "No se pudo emitir la entrada.");
       setCaptcha("");
@@ -60,16 +63,16 @@ export function FreeTicketForm({ tierId }: { tierId: string }) {
     } finally { setBusy(false); }
   }
 
-  if (issued) return <div className="success-note free-ticket-success"><b>Tu Free Access está emitido.</b><span>{issued.emailSent ? "Enviamos una copia a tu correo." : "Ábrela ahora y descárgala para tenerla a mano."}</span><a className="btn" href={`/entrada#${issued.token}`} target="_blank" rel="noreferrer">VER Y DESCARGAR ENTRADA</a></div>;
+  if (issued) return <div className="success-note free-ticket-success"><b>Tu pase {FREE_PASS_TITLE} está listo.</b><span>{issued.emailSent ? "Enviamos una copia a tu correo." : "Ábrelo ahora y descárgalo para tenerlo a mano."}</span><a className="btn" href={`/entrada#${issued.token}`}>VER MI QR</a></div>;
 
   return <form className="free-ticket-form" onSubmit={submit}>
     <label>Nombre completo<input name="name" autoComplete="name" required minLength={2} maxLength={120} /></label>
     <label>Teléfono<input name="phone" type="tel" autoComplete="tel" placeholder="+51 999 999 999" required minLength={7} maxLength={30} /></label>
     <label>Correo electrónico<input name="email" type="email" autoComplete="email" placeholder="correo@ejemplo.com" required maxLength={254} /></label>
     <label className="marketing-consent"><input name="marketing" type="checkbox" /><span>Quiero recibir novedades y próximos eventos de NERO. Es opcional.</span></label>
-    <p className="muted form-privacy-note">Una entrada por correo para este evento. Usamos tus datos para emitir la entrada, según nuestra <Link href="/privacidad" target="_blank">política de privacidad</Link>.</p>
+    <p className="muted form-privacy-note">Un pase por correo para este evento. Usamos tus datos para generar tu QR, según nuestra <Link href="/privacidad" target="_blank">política de privacidad</Link>.</p>
     {turnstileSiteKey && <><Script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" strategy="afterInteractive" onReady={mountWidget} /><div ref={widgetBox} /></>}
     {error && <div className="notice" role="alert">{error}</div>}
-    <button className="btn" type="submit" disabled={busy}>{busy ? "EMITIENDO…" : "OBTENER FREE ACCESS"}</button>
+    <button className="btn" type="submit" disabled={busy}>{busy ? "GENERANDO…" : FREE_PASS_CTA.toUpperCase()}</button>
   </form>;
 }

@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getEventBySlug } from "@/lib/events";
-import { formatEventDate, formatEventTime, formatPrice, isRunningLow } from "@/lib/format";
-import { whatsappLink } from "@/lib/social";
+import { formatEventDate, formatEventTime } from "@/lib/format";
+import { FREE_PASS_BADGE, FREE_PASS_CONDITION, FREE_PASS_CTA, FREE_PASS_TITLE } from "@/lib/free-pass";
 import { Availability } from "@/app/availability";
 import { Flyer } from "@/app/flyer";
 import { SiteNav } from "@/app/site-nav";
@@ -24,9 +24,10 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   const event = await getEventBySlug(slug);
   if (!event || event.status === "draft") notFound();
   const isPast = event.status === "past";
-  const open = event.tiers.filter((tier) => tier.capacity - tier.sold > 0);
-  const lowest = open.length ? Math.min(...open.map((tier) => tier.price)) : null;
-  const showBuyBar = !isPast && lowest !== null;
+  // Un único pase: la entrada Free Access del evento. Los demás tipos ya no se muestran al público.
+  const pass = event.tiers.find((tier) => tier.category === "free_access" && tier.price === 0);
+  const passOpen = Boolean(pass && pass.capacity - pass.sold > 0);
+  const showBuyBar = !isPast && passOpen;
   const music = event.music ? musicEmbed(event.music) : null;
   const venueConfirmed = Boolean(event.venue) && !/confirmar/i.test(event.venue);
 
@@ -48,22 +49,14 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
 
         {!isPast && <section id="entradas" className="block">
           <div className="block-head"><h2 className="poster-h2">Entradas</h2></div>
-          {event.tiers.length === 0 && <div className="empty">Las entradas se anunciarán pronto.</div>}
-          <div className="ticket-list">{event.tiers.map((tier) => {
-            const remaining = Math.max(0, tier.capacity - tier.sold);
-            const free = tier.category === "free_access" && tier.price === 0;
-            return <div className="ticket-row" key={tier.id}>
-              <div className="ticket-row-info">
-                <h3>{tier.name}{isRunningLow(tier.capacity, tier.sold) && <span className="badge">Últimas entradas</span>}</h3>
-                <Availability capacity={tier.capacity} sold={tier.sold} />
-              </div>
-              <b className={`ticket-row-price${free ? " is-accent" : ""}`}>{formatPrice(tier.price, free)}</b>
-              {remaining === 0 ? <span className="btn secondary" aria-disabled="true">AGOTADO</span>
-                : free ? <FreeAccess tierId={tier.id} />
-                  : <a className="btn secondary" data-track="whatsapp_click" href={whatsappLink(`Hola NERO, quiero reservar una entrada ${tier.name} para ${event.name}.`)} target="_blank" rel="noreferrer">RESERVAR POR WHATSAPP</a>}
-            </div>;
-          })}</div>
-          {event.tiers.some((tier) => tier.price > 0) && <p className="muted ticket-note">Las entradas con precio se reservan por WhatsApp. Te confirmamos el pago y te enviamos tu entrada con QR.</p>}
+          {pass ? <article className="free-pass-card">
+            <span className="badge">{FREE_PASS_BADGE}</span>
+            <h3>{FREE_PASS_TITLE}</h3>
+            <p className="free-pass-condition">{FREE_PASS_CONDITION}</p>
+            <Availability capacity={pass.capacity} sold={pass.sold} />
+            {passOpen ? <FreeAccess tierId={pass.id} />
+              : <span className="btn secondary" aria-disabled="true">AGOTADO</span>}
+          </article> : <div className="empty">El registro se abrirá pronto.</div>}
         </section>}
 
         {event.lineup.length > 0 && <section className="block">
@@ -92,8 +85,8 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
     </main>
 
     {showBuyBar && <div className="buy-bar">
-      <div><small>Desde</small><b>{formatPrice(lowest)}</b></div>
-      <a className="btn" href="#entradas">VER ENTRADAS</a>
+      <div><small>{FREE_PASS_BADGE}</small><b>{FREE_PASS_TITLE}</b></div>
+      <a className="btn" href="#entradas">{FREE_PASS_CTA.toUpperCase()}</a>
     </div>}
     <SiteFooter />
   </div>;
