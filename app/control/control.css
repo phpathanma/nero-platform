@@ -23,3 +23,11 @@
 .cam-bad{background:#c4161c}
 .tier-legacy{border-top:1px solid var(--line);margin-top:18px;padding-top:16px}.tier-legacy>p{font-size:12px;margin:6px 0 4px}.tier-legacy-row{grid-template-columns:1fr auto;align-items:center}.tier-legacy-row>small{font-size:11px;text-align:right}.tier-legacy-row .text-action{min-height:44px;padding:0 4px}
 @media(max-width:760px){.tier-editor-heading{flex-direction:column;align-items:flex-start;gap:4px}.tier-legacy-row{grid-template-columns:1fr auto}.tier-presets{grid-template-columns:1fr}}
+/* Login y formularios en móvil (Safari iPhone y Android): centrado estable, sin zoom al tocar un campo y toques cómodos. */
+.gate{min-height:100vh;min-height:100dvh}
+.admin-form input{font-size:16px;min-height:48px;-webkit-appearance:none;appearance:none}
+.admin-form button{width:100%;min-height:48px}
+@media(max-width:760px){.control-toolbar input,.control-toolbar select,.event-form input,.event-form select,.event-form textarea,.scanner-form input,.courtesy-form input,.courtesy-form select{font-size:16px}}
+/* Barra de módulos en móvil: pegada al borde superior (antes top:66px, la altura del menú del sitio público, que el panel no tiene) y con espacio para la barra de estado o el notch del iPhone. La fila de la barra mide lo que su contenido (no se estira en páginas cortas). */
+@media(max-width:760px){.admin-shell{grid-template-rows:auto 1fr}.sidebar{top:0;padding-top:max(9px,env(safe-area-inset-top));padding-left:max(9px,env(safe-area-inset-left));padding-right:max(9px,env(safe-area-inset-right))}}
+@media(min-width:761px){.sidebar{padding-left:max(16px,env(safe-area-inset-left))}.admin-main{padding-right:max(clamp(24px,5vw,60px),env(safe-area-inset-right))}}

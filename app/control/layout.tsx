@@ -1,8 +1,13 @@
+import type { Viewport } from "next";
 import Link from "next/link";
 import "./control.css";
 import { ControlNav } from "./control-nav";
 import { getControlAccess } from "@/lib/supabase/control";
 import { signOut } from "./actions";
+
+// Solo en el panel: el contenido llega hasta los bordes del teléfono para que env(safe-area-inset-*) tenga valor
+// (app instalada con barra de estado translúcida). control.css deja el espacio del notch y la barra de estado.
+export const viewport: Viewport = { viewportFit: "cover" };
 
 export default async function ControlLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const { supabase, user, role } = await getControlAccess();

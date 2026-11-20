@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { signIn } from "@/app/control/actions";
+// El login vive fuera del layout del panel (grupo (auth)), así que importa aquí los estilos de .gate y .admin-form.
+import "@/app/control/control.css";
 
 const messages: Record<string, string> = {
   config: "Falta configurar Supabase.",
@@ -11,6 +13,6 @@ export default async function ControlLoginPage({ searchParams }: { searchParams:
   const { error } = await searchParams;
   return <main className="gate"><Link className="logo" href="/">NERO</Link><span className="eyebrow">NERO CONTROL</span><h1>Iniciar sesión</h1><p className="muted">Accede con la cuenta de tu equipo.</p>
     {error && <div className="notice" role="alert">{messages[error] ?? "No se pudo iniciar sesión."}</div>}
-    <form className="admin-form" action={signIn}><label htmlFor="email">Correo electrónico</label><input id="email" name="email" type="email" autoComplete="email" required /><label htmlFor="password">Contraseña</label><input id="password" name="password" type="password" autoComplete="current-password" required /><button className="btn" type="submit">ENTRAR</button></form>
+    <form className="admin-form" action={signIn}><label htmlFor="email">Correo electrónico</label><input id="email" name="email" type="email" inputMode="email" autoComplete="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} required /><label htmlFor="password">Contraseña</label><input id="password" name="password" type="password" autoComplete="current-password" enterKeyHint="go" required /><button className="btn" type="submit">ENTRAR</button></form>
   </main>;
 }
