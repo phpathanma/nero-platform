@@ -85,7 +85,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
     </main>
 
     {showBuyBar && <div className="buy-bar">
-      <div><small>{FREE_PASS_BADGE}</small><b>{FREE_PASS_TITLE}</b></div>
+      <div><small>Acceso con QR</small><b>{FREE_PASS_TITLE}</b></div>
       <a className="btn" href="#entradas">{FREE_PASS_CTA.toUpperCase()}</a>
     </div>}
     <SiteFooter />

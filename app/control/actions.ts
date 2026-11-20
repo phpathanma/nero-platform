@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath, revalidateTag } from "next/cache";
+import { FREE_PASS_NAME } from "@/lib/free-pass";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { musicEmbed } from "@/lib/music";
@@ -54,11 +55,16 @@ export async function saveEvent(formData: FormData) {
   const status = String(formData.get("status") ?? "draft");
   const lineup = String(formData.get("lineup") ?? "").split("\n").map((item) => item.trim()).filter(Boolean);
   const schedule = String(formData.get("schedule") ?? "").split("\n").map((item) => item.trim()).filter(Boolean);
-  const tierNames = formData.getAll("tier_name").map((value) => String(value).trim());
   const tierCategories = formData.getAll("tier_category").map((value) => String(value));
+  // El pase free_access siempre se guarda con el nombre de lib/free-pass.ts, igual que se muestra en la web.
+  const tierNames = formData.getAll("tier_name").map((value, index) => tierCategories[index] === "free_access" ? FREE_PASS_NAME : String(value).trim());
   const tierPrices = formData.getAll("tier_price").map((value) => Number(value));
   const tierCapacities = formData.getAll("tier_capacity").map((value) => Number(value));
   const tierIds = formData.getAll("tier_id").map((value) => String(value));
+  // Solo se pueden crear pases Free con Consumo; las categorías anteriores se conservan si ya existen.
+  if (tierIds.some((tierId, index) => !tierId && tierCategories[index] !== "free_access")) {
+    redirect(id ? `/control/eventos/${id}?error=validation` : "/control/eventos/nuevo?error=validation");
+  }
   const validCategories = ["free_access", "ga_10pm", "ga_all_night", "vip", "dj_booth", "custom"];
   if (!name || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) || !date || !time || !city || (status === "published" && !tierNames.length) || tierNames.length !== tierCategories.length || tierNames.length !== tierPrices.length || tierNames.length !== tierCapacities.length || tierNames.length !== tierIds.length || tierNames.some((tierName) => !tierName) || tierCategories.some((category) => !validCategories.includes(category)) || new Set(tierCategories.filter((category) => category !== "custom")).size !== tierCategories.filter((category) => category !== "custom").length || tierPrices.some((price, index) => !Number.isFinite(price) || price < 0 || (tierCategories[index] === "free_access" ? price !== 0 : price === 0)) || tierCapacities.some((capacity) => !Number.isInteger(capacity) || capacity < 1) || !["draft", "published", "past"].includes(status)) {
     redirect(id ? `/control/eventos/${id}?error=validation` : "/control/eventos/nuevo?error=validation");
@@ -110,6 +116,13 @@ export async function saveEvent(formData: FormData) {
     const existingIds = new Set(soldById.keys());
     if (tierIds.some((tierId) => tierId && !existingIds.has(tierId)) || tierIds.some((tierId, index) => tierId && tierCapacities[index] < (soldById.get(tierId) ?? 0))) {
       redirect(`/control/eventos/${id}?error=capacity`);
+    }
+    // Categorías quitadas en el editor: se borran solo si no tienen emisiones. La FK de tickets impide
+    // borrar una con entradas, y las que tienen emisiones nunca se borran aunque falten en el formulario.
+    const removable = (existingTiers ?? []).filter((item) => !tierIds.includes(item.id) && (item.sold ?? 0) === 0).map((item) => item.id);
+    if (removable.length) {
+      const { error: deleteError } = await supabase.from("ticket_tiers").delete().in("id", removable).eq("event_id", id).eq("sold", 0);
+      if (deleteError) redirect(`/control/eventos/${id}?error=tier`);
     }
     for (let index = 0; index < tierNames.length; index += 1) {
       const tierId = tierIds[index];

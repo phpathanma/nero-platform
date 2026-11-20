@@ -1,59 +1,69 @@
 "use client";
 
 import { useState } from "react";
+import { FREE_PASS_CONDITION, FREE_PASS_NAME, FREE_PASS_TITLE } from "@/lib/free-pass";
 
 type Category = "free_access" | "ga_10pm" | "ga_all_night" | "vip" | "dj_booth" | "custom";
 type Tier = { id?: string; category: Category; name: string; price: number; capacity: number; sold: number };
 
-const presets: { category: Exclude<Category, "custom">; name: string }[] = [
-  { category: "free_access", name: "Free Access" },
-  { category: "ga_10pm", name: "GA 10PM" },
-  { category: "ga_all_night", name: "GA All Night" },
-  { category: "vip", name: "VIP" },
-  { category: "dj_booth", name: "DJ Booth" },
-];
-
+// Igual que la web: el único tipo de entrada que se puede crear es el pase Free con Consumo.
+// Las categorías antiguas (GA, VIP, DJ Booth, personalizadas) solo aparecen si un evento ya las tiene:
+// sin emisiones se pueden quitar; con emisiones se conservan para no perder el historial.
 export function TierEditor({ initialTiers }: { initialTiers: Tier[] }) {
   const [tiers, setTiers] = useState<Tier[]>(initialTiers.map((tier) => ({ ...tier, category: tier.category ?? "custom", sold: tier.sold ?? 0 })));
-  function togglePreset(category: Exclude<Category, "custom">, name: string) {
-    const current = tiers.find((tier) => tier.category === category);
-    if (current?.id) return; // A category already used by an event stays attached to it.
-    if (current) {
-      setTiers((items) => items.filter((tier) => tier.category !== category));
-    } else {
-      setTiers((items) => [...items, { category, name, price: 0, capacity: 0, sold: 0 }]);
-    }
+  const pass = tiers.find((tier) => tier.category === "free_access");
+  const legacy = tiers.filter((tier) => tier.category !== "free_access");
+
+  function togglePass() {
+    if (pass && pass.sold > 0) return;
+    setTiers((items) => pass
+      ? items.filter((tier) => tier.category !== "free_access")
+      : [{ category: "free_access", name: FREE_PASS_NAME, price: 0, capacity: 0, sold: 0 }, ...items]);
   }
 
-  function update(index: number, key: "name" | "price" | "capacity", value: string) {
-    setTiers((current) => current.map((tier, tierIndex) => tierIndex === index
-      ? { ...tier, [key]: key === "name" ? value : (value === "" ? 0 : Number(value)) }
-      : tier));
+  function remove(target: Tier) {
+    if (target.sold > 0) return;
+    setTiers((items) => items.filter((tier) => tier !== target));
+  }
+
+  function setCapacity(target: Tier, value: string) {
+    setTiers((items) => items.map((tier) => tier === target ? { ...tier, capacity: value === "" ? 0 : Number(value) } : tier));
   }
 
   return <section className="tier-editor">
-    <div className="tier-editor-heading"><div><span className="eyebrow">Aforo y acceso</span><h2>Tipos de entrada</h2></div><span className="muted">Activa solo las categorías que tendrá el evento.</span></div>
+    <div className="tier-editor-heading"><div><span className="eyebrow">Aforo y acceso</span><h2>Pase del evento</h2></div><span className="muted">Un único pase con QR, igual que en la web.</span></div>
     <div className="tier-presets">
-      {presets.map((preset) => {
-        const existing = tiers.find((tier) => tier.category === preset.category);
-        return <label className={`tier-preset${existing ? " selected" : ""}`} key={preset.category}>
-          <input type="checkbox" checked={Boolean(existing)} disabled={Boolean(existing?.id)} onChange={() => togglePreset(preset.category, preset.name)} />
-          <span>{preset.name}</span>{existing?.id && <small>Ya habilitada</small>}
-        </label>;
-      })}
+      <label className={`tier-preset${pass ? " selected" : ""}`}>
+        <input type="checkbox" checked={Boolean(pass)} disabled={Boolean(pass && pass.sold > 0)} onChange={togglePass} />
+        <span>{FREE_PASS_TITLE}</span>{pass && pass.sold > 0 && <small>{pass.sold} emitidas</small>}
+      </label>
     </div>
 
-    {tiers.map((tier, index) => {
-      const preset = presets.find((item) => item.category === tier.category);
-      return <div className="tier-fields" key={tier.id ?? `${tier.category}-${index}`}>
+    {pass && <div className="tier-fields">
+      <input type="hidden" name="tier_id" value={pass.id ?? ""} />
+      <input type="hidden" name="tier_category" value="free_access" />
+      <input type="hidden" name="tier_name" value={FREE_PASS_NAME} />
+      <div className="tier-name"><b>{FREE_PASS_NAME}</b><small className="muted">{FREE_PASS_CONDITION}</small></div>
+      <div className="tier-value"><small>Precio en la web</small><b>Gratis · S/ 0</b><input type="hidden" name="tier_price" value="0" /></div>
+      <label>Cupo<input name="tier_capacity" type="number" min={Math.max(1, pass.sold)} step="1" value={pass.capacity || ""} placeholder="Define el cupo" onChange={(event) => setCapacity(pass, event.target.value)} required /><small className="muted">{pass.id ? `${pass.sold} emitidas` : "Pases máximos"}</small></label>
+    </div>}
+    {!pass && <p className="muted">Activa el pase para habilitar el registro con QR.</p>}
+
+    {legacy.length > 0 && <div className="tier-legacy">
+      <span className="eyebrow">Categorías anteriores</span>
+      <p className="muted">No se muestran en la web. Quita las que no tienen emisiones; las que sí tienen se conservan por el historial.</p>
+      {legacy.map((tier) => <div className="tier-fields tier-legacy-row" key={tier.id ?? tier.name}>
         <input type="hidden" name="tier_id" value={tier.id ?? ""} />
         <input type="hidden" name="tier_category" value={tier.category} />
-        {preset ? <><input type="hidden" name="tier_name" value={preset.name} /><div className="tier-name"><b>{preset.name}</b>{tier.id && <small className="muted">{tier.sold} emitidas</small>}</div></> : <label>Nombre<input name="tier_name" value={tier.name} onChange={(event) => update(index, "name", event.target.value)} required maxLength={60} /></label>}
-        {tier.category === "free_access" ? <div className="tier-value"><small>Precio</small><b>Gratis · S/ 0</b><input type="hidden" name="tier_price" value="0" /></div> : <label>Precio (S/)<input name="tier_price" type="number" min="0" step="0.01" value={tier.price} onChange={(event) => update(index, "price", event.target.value)} required /></label>}
-        <label>Cupo<input name="tier_capacity" type="number" min={Math.max(1, tier.sold)} step="1" value={tier.capacity || ""} placeholder="Define el cupo" onChange={(event) => update(index, "capacity", event.target.value)} required /><small className="muted">{tier.id ? `${tier.sold} emitidas` : "Entradas máximas"}</small></label>
-      </div>;
-    })}
-    {!tiers.length && <p className="muted">Activa al menos una categoría para habilitar la emisión de entradas.</p>}
-    {tiers.length > 0 && <p className="muted tier-capacity-note">Los cupos son por categoría y cuentan ventas, Free Access y cortesías.</p>}
+        <input type="hidden" name="tier_name" value={tier.name} />
+        <input type="hidden" name="tier_price" value={tier.price} />
+        <input type="hidden" name="tier_capacity" value={tier.capacity} />
+        <div className="tier-name"><b>{tier.name}</b><small className="muted">{tier.sold} emitidas · cupo {tier.capacity}</small></div>
+        {tier.sold > 0
+          ? <small className="muted">Se conserva: tiene entradas emitidas.</small>
+          : <button className="text-action danger" type="button" onClick={() => remove(tier)}>QUITAR</button>}
+      </div>)}
+    </div>}
+    {tiers.length > 0 && <p className="muted tier-capacity-note">El cupo cuenta los pases emitidos desde la web y las cortesías.</p>}
   </section>;
 }

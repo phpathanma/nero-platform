@@ -94,7 +94,7 @@ Los roles se asignan manualmente en Supabase. Una cuenta sin rol no entra al pan
 - **Afiche**: imagen JPG, PNG o WebP de hasta 4 MB (recomendado vertical 4:5, por ejemplo 1080 × 1350).
 - **Color del evento**.
 - **Enlace de música** (Spotify, SoundCloud o YouTube).
-- **Tipos de entrada**: Free Access, GA 10PM, GA All Night, VIP y DJ Booth, cada uno con precio y cupo. El cupo no puede bajar por debajo de las entradas ya emitidas.
+- **Pase del evento**: un único pase "Free con Consumo" (gratis en la web, consumo mínimo en puerta), con cupo. El monto y la hora límite están en `lib/free-pass.ts`. Las categorías anteriores (GA, VIP, DJ Booth, personalizadas) ya no se pueden crear: si un evento las tiene, se pueden quitar mientras no tengan emisiones. El cupo no puede bajar por debajo de las entradas ya emitidas.
 
 ### Ventas (`/control/ventas`)
 

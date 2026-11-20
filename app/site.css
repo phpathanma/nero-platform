@@ -137,6 +137,11 @@
 .free-pass-form { width: 100%; text-align: left; }
 .free-pass-form > p { margin: 0; }
 .buy-bar b { text-transform: uppercase; }
+@media (max-width: 760px) {
+  .buy-bar div { min-width: 0; }
+  .buy-bar small, .buy-bar b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .buy-bar .btn { flex: none; white-space: nowrap; padding-inline: 16px; }
+}
 
 .lineup-big { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--rule); font-size: clamp(24px, 3.6vw, 40px); line-height: 1; }
 .lineup-big li { padding: 16px 0; border-bottom: 1px solid var(--rule); }
@@ -211,7 +216,7 @@
   .buy-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 15; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); background: #050505; border-top: 1px solid var(--ink); }
   .buy-bar div { display: flex; flex-direction: column; gap: 4px; }
   .buy-bar small { font: 500 10px/1 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--dim); }
-  .buy-bar b { font: 500 20px/1 var(--font-mono); }
+  .buy-bar b { font: 500 14px/1.2 var(--font-mono); }
   .buy-bar ~ .site-footer { padding-bottom: 96px; }
 }
 @media (max-width: 430px) {
