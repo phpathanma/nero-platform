@@ -1,6 +1,7 @@
 import { unstable_cache } from "next/cache";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import type { EventItem, EventRow, TierRow } from "./event-types";
+import { effectiveStatus } from "./format";
 
 const BASE_SELECT = "id, slug, name, tag, event_date, event_time, venue, city, status, accent, background, flyer_url, lineup, schedule, ticket_tiers(id,category,name,price,capacity,sold)";
 const EVENT_SELECT = `${BASE_SELECT}, music_url`;
@@ -53,14 +54,22 @@ const getCachedEventById = unstable_cache(async (id: string): Promise<EventItem 
   return data ? mapEvent(data) : null;
 }, ["nero-public-event-by-id-v3"], { revalidate: 60, tags: ["events"] });
 
+// El estado se calcula fuera de la caché: un evento pasa a «past» a las 12:00 del día siguiente aunque la base
+// (o la caché de 60 s) aún diga published. supabase/event-lifecycle.sql lo cierra también en la base.
+function withLifecycle(event: EventItem): EventItem {
+  return { ...event, status: effectiveStatus(event.status, event.date) };
+}
+
 export async function getEvents(): Promise<EventItem[]> {
-  return getCachedEvents();
+  return (await getCachedEvents()).map(withLifecycle);
 }
 
 export async function getEventBySlug(slug: string) {
-  return getCachedEventBySlug(slug);
+  const event = await getCachedEventBySlug(slug);
+  return event ? withLifecycle(event) : event;
 }
 
 export async function getEventById(id: string) {
-  return getCachedEventById(id);
+  const event = await getCachedEventById(id);
+  return event ? withLifecycle(event) : event;
 }

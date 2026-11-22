@@ -61,3 +61,28 @@ export function ticketFileName(brand: string, tier: string): string {
   const slug = (tier ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/gi, "-").replace(/^-+|-+$/g, "");
   return `${brand}-${slug || "entrada"}.pdf`;
 }
+
+// Hora de cierre de un evento: las 12:00 (Lima) del día siguiente a su fecha. La fiesta sigue pasada la medianoche,
+// así que no se cierra a las 00:00. Debe coincidir con close_past_events() en supabase/event-lifecycle.sql.
+export const EVENT_CLOSE_TIME = "12:00";
+
+export type LimaNow = { date: string; time: string };
+
+// Fecha (YYYY-MM-DD) y hora (HH:MM) actuales en Lima, sin importar la zona del servidor.
+export function limaNow(now: Date = new Date()): LimaNow {
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Lima", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(now);
+  const get = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
+  return { date: `${get("year")}-${get("month")}-${get("day")}`, time: `${get("hour")}:${get("minute")}` };
+}
+
+function nextDay(date: string): string {
+  const [year, month, day] = date.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day + 1)).toISOString().slice(0, 10);
+}
+
+// Un evento publicado pasa a «past» a las 12:00 (Lima) del día siguiente a su fecha, aunque en la base siga como published.
+export function effectiveStatus<T extends "draft" | "published" | "past">(status: T, date: string, now: LimaNow = limaNow()): T | "past" {
+  if (status !== "published" || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return status;
+  const closeDate = nextDay(date);
+  return now.date > closeDate || (now.date === closeDate && now.time >= EVENT_CLOSE_TIME) ? "past" : status;
+}

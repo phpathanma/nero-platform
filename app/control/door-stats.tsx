@@ -1,17 +1,20 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import styles from "./door-stats.module.css";
+import { effectiveStatus } from "@/lib/format";
 
-type EventRow = { id: string; name: string };
+type EventRow = { id: string; name: string; status: "published"; event_date: string };
 type TicketRow = { event_id: string; status: string };
 
 export async function DoorStats({ supabase }: { supabase: SupabaseClient }) {
   const { data: events, error: eventsError } = await supabase
     .from("events")
-    .select("id, name")
+    .select("id, name, status, event_date")
     .eq("status", "published")
     .order("event_date", { ascending: true });
-  if (eventsError || !events || events.length === 0) return null;
-  const eventRows = events as EventRow[];
+  if (eventsError || !events) return null;
+  // Solo eventos en curso: el contador sigue durante la noche y desaparece a las 12:00 del día siguiente.
+  const eventRows = (events as EventRow[]).filter((event) => effectiveStatus(event.status, event.event_date) === "published");
+  if (eventRows.length === 0) return null;
 
   const { data: tickets, error: ticketsError } = await supabase
     .from("tickets")

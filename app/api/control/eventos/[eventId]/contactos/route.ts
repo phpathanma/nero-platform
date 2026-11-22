@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getControlAccess } from "@/lib/supabase/control";
+import { effectiveStatus } from "@/lib/format";
 
 function csvCell(value: string | null) {
   let safe = value ?? "";
@@ -16,10 +17,10 @@ export async function GET(_request: Request, { params }: { params: Promise<{ eve
 
   const { eventId } = await params;
   const { data: event, error: eventError } = await supabase
-    .from("events").select("name,status").eq("id", eventId).maybeSingle();
+    .from("events").select("name,status,event_date").eq("id", eventId).maybeSingle();
   if (eventError) return NextResponse.json({ error: "No se pudo consultar el evento." }, { status: 500 });
   if (!event) return NextResponse.json({ error: "Evento no encontrado." }, { status: 404 });
-  if (event.status !== "past") {
+  if (effectiveStatus(event.status, event.event_date) !== "past") {
     return NextResponse.json({ error: "La descarga está disponible al finalizar el evento." }, { status: 409 });
   }
 
