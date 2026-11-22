@@ -22,37 +22,12 @@ export function nextState(current: PlayerState, isPaused: boolean): PlayerState 
 // Qué hace un toque del botón. Con el reproductor ya precargado, play/resume se llama dentro del propio toque
 // (así suena al instante y iPhone tiene más chance de aceptarlo). Si se toca antes de que Spotify esté listo,
 // el pedido queda en cola y se reproduce apenas cargue.
-export type TapAction = "pause" | "play" | "resume" | "queue" | "open-app";
+export type TapAction = "pause" | "play" | "resume" | "queue";
 
-export function tapAction(ready: boolean, state: PlayerState, hasPlayed: boolean, androidInstagram = false): TapAction {
-  if (androidInstagram) return "open-app";
+export function tapAction(ready: boolean, state: PlayerState, hasPlayed: boolean): TapAction {
   if (!ready) return "queue";
   if (state === "playing") return "pause";
   return hasPlayed ? "resume" : "play";
-}
-
-// En el navegador interno de Instagram en Android, el embed de Spotify no reproduce (muestra «Obtener Spotify»).
-// Ahí no se precarga el reproductor y el toque abre la app de Spotify. iOS (incluido Instagram) no entra aquí.
-export function isAndroidInstagramBrowser(userAgent: string | null | undefined): boolean {
-  const ua = userAgent ?? "";
-  return /android/i.test(ua) && /instagram/i.test(ua);
-}
-
-export function spotifyPlaylistUrl(playlistId: string): string {
-  return `https://open.spotify.com/playlist/${playlistId}`;
-}
-
-// Intent de Android: abre la playlist en la app de Spotify; si no está instalada, el propio Android va a la web.
-export function spotifyIntentUrl(playlistId: string): string {
-  return `intent://open.spotify.com/playlist/${playlistId}#Intent;scheme=https;package=com.spotify.music;S.browser_fallback_url=${encodeURIComponent(spotifyPlaylistUrl(playlistId))};end`;
-}
-
-// Red de seguridad: si tras este tiempo la página sigue visible (la app no se abrió), se va a open.spotify.com.
-export const APP_FALLBACK_MS = 1500;
-
-// leftPage: se ocultó la página o llegó pagehide (la app de Spotify sí se abrió).
-export function needsAppFallback(visibilityState: string, leftPage: boolean): boolean {
-  return visibilityState === "visible" && !leftPage;
 }
 
 // Se muestra la barra de Spotify si se pidió reproducir y, pasado el plazo, no está sonando.

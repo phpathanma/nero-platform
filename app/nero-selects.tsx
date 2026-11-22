@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { loadSpotifyApi, type SpotifyController } from "@/lib/spotify-embed";
-import { APP_FALLBACK_MS, buttonLabel, FALLBACK_MS, isAndroidInstagramBrowser, LOAD_TIMEOUT_MS, needsAppFallback, needsFallback, nextState, spotifyIntentUrl, spotifyPlaylistUrl, tapAction, type PlayerState } from "@/lib/selects-player";
+import { buttonLabel, FALLBACK_MS, LOAD_TIMEOUT_MS, needsFallback, nextState, tapAction, type PlayerState } from "@/lib/selects-player";
 
 type IdleWindow = Window & { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number; cancelIdleCallback?: (id: number) => void };
 
@@ -11,9 +11,6 @@ type IdleWindow = Window & { requestIdleCallback?: (cb: () => void, opts?: { tim
 // oculto, así el toque reproduce al instante. Nunca suena solo: solo con el toque. La barra compacta se ve cuando
 // suena (con su atribución) o si salta el respaldo de 2,5 s: en iPhone, Safari puede bloquear el audio del iframe
 // oculto y la barra aparece para darle play directo.
-// Excepción: en el navegador interno de Instagram en Android el embed no reproduce («Obtener Spotify»). Ahí no se
-// precarga nada y el toque abre la playlist en la app de Spotify (intent de Android); si en 1,5 s la página sigue
-// visible porque la app no se abrió, se va a open.spotify.com.
 export function NeroSelects({ playlistId }: { playlistId: string }) {
   const [state, setState] = useState<PlayerState>("idle");
   const [fallback, setFallback] = useState(false);
@@ -27,8 +24,6 @@ export function NeroSelects({ playlistId }: { playlistId: string }) {
   const stateRef = useRef<PlayerState>("idle");
   const requestedAt = useRef<number | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const androidInstagram = useRef(false);
-  const stopAppFallback = useRef<(() => void) | null>(null);
 
   // Estables (solo usan refs y setState): el efecto de precarga no se vuelve a ejecutar en cada render.
   const update = useCallback((next: PlayerState) => { stateRef.current = next; setState(next); }, []);
@@ -46,10 +41,8 @@ export function NeroSelects({ playlistId }: { playlistId: string }) {
     }, waitMs);
   }, [update]);
 
-  // Precarga: crea el controlador de Spotify al montar, sin reproducir. En Instagram de Android no se precarga.
+  // Precarga: crea el controlador de Spotify al montar, sin reproducir.
   useEffect(() => {
-    androidInstagram.current = isAndroidInstagramBrowser(navigator.userAgent);
-    if (androidInstagram.current) return () => { stopAppFallback.current?.(); };
     const target = document.createElement("div");
     host.current?.appendChild(target);
     let cancelled = false;
@@ -86,33 +79,8 @@ export function NeroSelects({ playlistId }: { playlistId: string }) {
     };
   }, [playlistId, armFallback, update]);
 
-  // Instagram en Android: abre la app de Spotify. Si en 1,5 s la página sigue visible (no se abrió), va a la web.
-  // Si la app sí se abre, la página se oculta (visibilitychange) o se descarga (pagehide) y el respaldo se cancela.
-  function openSpotifyApp() {
-    stopAppFallback.current?.();
-    let leftPage = false;
-    const onLeave = () => { if (document.visibilityState === "hidden") { leftPage = true; stop(); } };
-    const onPageHide = () => { leftPage = true; stop(); };
-    const fallbackTimer = setTimeout(() => {
-      stop();
-      if (needsAppFallback(document.visibilityState, leftPage)) window.location.href = spotifyPlaylistUrl(playlistId);
-    }, APP_FALLBACK_MS);
-    function stop() {
-      clearTimeout(fallbackTimer);
-      document.removeEventListener("visibilitychange", onLeave);
-      window.removeEventListener("pagehide", onPageHide);
-      stopAppFallback.current = null;
-    }
-    document.addEventListener("visibilitychange", onLeave);
-    window.addEventListener("pagehide", onPageHide);
-    stopAppFallback.current = stop;
-    window.location.href = spotifyIntentUrl(playlistId);
-  }
-
   function toggle() {
-    const inAndroidInstagram = androidInstagram.current || isAndroidInstagramBrowser(navigator.userAgent);
-    const action = tapAction(ready.current, stateRef.current, hasPlayed.current, inAndroidInstagram);
-    if (action === "open-app") { openSpotifyApp(); return; }
+    const action = tapAction(ready.current, stateRef.current, hasPlayed.current);
     if (action === "pause") { controller.current?.pause(); return; }
     if (action === "play") { controller.current?.play(); armFallback(); return; }
     if (action === "resume") { controller.current?.resume(); armFallback(); return; }
@@ -126,7 +94,7 @@ export function NeroSelects({ playlistId }: { playlistId: string }) {
   return <section className={`nero-selects${playing ? " is-playing" : ""}`} aria-label="NERO SELECTS, playlist oficial en Spotify">
     <div className="nero-selects-actions">
       <button className="btn" type="button" onClick={toggle} aria-pressed={playing} disabled={state === "loading"}>{buttonLabel(state)}</button>
-      <a className="social-action" href={spotifyPlaylistUrl(playlistId)} target="_blank" rel="noreferrer">ABRIR EN SPOTIFY ↗</a>
+      <a className="social-action" href={`https://open.spotify.com/playlist/${playlistId}`} target="_blank" rel="noreferrer">ABRIR EN SPOTIFY ↗</a>
     </div>
     <div ref={host} className={`nero-selects-embed${showEmbed ? " is-open" : ""}`} aria-hidden={!showEmbed} />
     {fallback && !started && <p className="nero-selects-note">Tu navegador pidió dar play desde Spotify: toca ▶ en la barra.</p>}
