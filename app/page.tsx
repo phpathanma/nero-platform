@@ -3,6 +3,7 @@ import { getEvents } from "@/lib/events";
 import { eventDateParts, formatEventDate, formatEventTime, lowestPriceLabel } from "@/lib/format";
 import { instagramUrl, spotifyPlaylistId } from "@/lib/social";
 import { Flyer } from "./flyer";
+import { NeroSelects } from "./nero-selects";
 import { SiteNav } from "./site-nav";
 import { SpotifyPlayer } from "./spotify-player";
 import { SiteFooter } from "./site-footer";
@@ -43,13 +44,14 @@ export default async function HomePage() {
           </Link>
         </header>
       ) : (
-        <header className="next-event is-empty">
+        <header className="next-event is-empty has-listen">
           <div className="next-event-info">
             <span className="kicker">Electronic music experiences · Perú</span>
-            <h1>Pronto, nuevas fechas</h1>
-            <p className="muted">Noches de house y techno. Sonido, luz y energía para encontrarnos en la pista.</p>
-            <div className="cta-row"><a className="btn" href={instagramUrl} target="_blank" rel="noreferrer">SÍGUENOS EN INSTAGRAM <span aria-hidden="true">↗</span></a></div>
+            <h1>Nuevas fechas pronto</h1>
+            <p className="muted">Por el momento, síguenos el ritmo con la selección oficial de NERO.</p>
           </div>
+          {/* La música es la única acción del Hero; Instagram pasa a la Agenda. */}
+          <NeroSelects playlistId={spotifyPlaylistId} />
         </header>
       )}
 
@@ -68,13 +70,7 @@ export default async function HomePage() {
               <span className="row-price">{lowestPriceLabel(event.tiers)}</span>
               <span className="row-arrow" aria-hidden="true">↗</span>
             </Link>
-          ))}</div> : (
-            // Sin eventos activos: en lugar del aviso vacío, la selección oficial de NERO en Spotify (único reproductor de la página).
-            <article className="social-card spotify agenda-listen" data-mark="♫">
-              <div><span className="mono-label">Mientras anunciamos nuevas fechas</span><h2>Sigue escuchando NERO</h2><p>La selección oficial de NERO en Spotify: house y techno para mantener la noche encendida hasta la próxima fecha.</p></div>
-              <SpotifyPlayer playlistId={spotifyPlaylistId} />
-            </article>
-          )}
+          ))}</div> : <div className="empty agenda-empty"><p>Aún no hay fechas publicadas. Síguenos en Instagram para ser el primero en enterarte.</p><a className="btn secondary" href={instagramUrl} target="_blank" rel="noreferrer">SÍGUENOS EN INSTAGRAM <span aria-hidden="true">↗</span></a></div>}
         </section>
 
         <section id="nosotros" className="block statement">
@@ -101,7 +97,7 @@ export default async function HomePage() {
             <div><span className="mono-label">Detrás de la noche</span><h2>Síguenos en Instagram</h2><p>Anuncios, artistas y momentos desde la pista. La conversación continúa en Instagram.</p></div>
             <a className="social-action" href={instagramUrl} target="_blank" rel="noreferrer">IR A INSTAGRAM ↗</a>
           </article>
-          {/* Si la Agenda ya muestra el reproductor, no se repite aquí: dos reproductores chocarían con la misma API de Spotify. */}
+          {/* Sin eventos, el reproductor vive en la tarjeta NERO SELECTS del Hero: aquí no se repite (un solo reproductor por página). */}
           {upcoming.length > 0 && <article className="social-card" data-mark="♫">
             <div><span className="mono-label">El sonido de NERO</span><h2>Escucha nuestra selección</h2><p>Una playlist para entrar en ambiente, estés donde estés.</p></div>
             <SpotifyPlayer playlistId={spotifyPlaylistId} />
