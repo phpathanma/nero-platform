@@ -44,14 +44,14 @@ export default async function HomePage() {
           </Link>
         </header>
       ) : (
-        <header className="next-event is-empty has-listen">
+        <header className="next-event is-empty">
           <div className="next-event-info">
             <span className="kicker">Electronic music experiences · Perú</span>
             <h1>Nuevas fechas pronto</h1>
             <p className="muted">Por el momento, síguenos el ritmo con la selección oficial de NERO.</p>
+            {/* La música es la única acción del Hero, en la misma columna del texto; Instagram pasa a la Agenda. */}
+            <NeroSelects playlistId={spotifyPlaylistId} />
           </div>
-          {/* La música es la única acción del Hero; Instagram pasa a la Agenda. */}
-          <NeroSelects playlistId={spotifyPlaylistId} />
         </header>
       )}
 

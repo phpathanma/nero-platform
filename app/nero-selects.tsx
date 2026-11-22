@@ -4,12 +4,15 @@ import { useEffect, useRef, useState } from "react";
 import { loadSpotifyApi, type SpotifyController } from "@/lib/spotify-embed";
 import { buttonLabel, FALLBACK_MS, LOAD_TIMEOUT_MS, needsFallback, nextState, type PlayerState } from "@/lib/selects-player";
 
-// NERO SELECTS en el Hero, estilo lanzamiento y sin caja: portada, etiqueta y dos acciones.
-// Spotify solo se carga al primer toque y su reproductor queda montado pero oculto. Si el navegador no deja sonar
-// el iframe oculto (iPhone), aparece la barra compacta de Spotify para darle play directo.
+// NERO SELECTS en el Hero: una sola fila con el botón de escuchar y el enlace a Spotify, bajo el texto del Hero.
+// Spotify solo se carga al primer toque y su reproductor queda montado pero oculto hasta que suena (entonces se ve
+// la barra compacta, con su atribución) o hasta que salta el respaldo de 2,5 s: en iPhone, Safari no deja sonar
+// el iframe oculto y la barra aparece para darle play directo.
 export function NeroSelects({ playlistId }: { playlistId: string }) {
   const [state, setState] = useState<PlayerState>("idle");
-  const [showEmbed, setShowEmbed] = useState(false);
+  const [fallback, setFallback] = useState(false);
+  const [started, setStarted] = useState(false);
+  const showEmbed = started || fallback;
   const host = useRef<HTMLDivElement>(null);
   const controller = useRef<SpotifyController | null>(null);
   const stateRef = useRef<PlayerState>("idle");
@@ -25,7 +28,7 @@ export function NeroSelects({ playlistId }: { playlistId: string }) {
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => {
       if (needsFallback(requestedAt.current, stateRef.current, Date.now())) {
-        setShowEmbed(true);
+        setFallback(true);
         if (stateRef.current === "loading") update("paused");
       }
     }, waitMs);
@@ -53,7 +56,7 @@ export function NeroSelects({ playlistId }: { playlistId: string }) {
         controller.current = created;
         created.addListener("playback_update", ({ data }) => {
           const next = nextState(stateRef.current, data.isPaused);
-          if (next === "playing") requestedAt.current = null;
+          if (next === "playing") { requestedAt.current = null; setStarted(true); }
           update(next);
         });
         created.addListener("ready", () => { created.play(); armFallback(); });
@@ -63,16 +66,11 @@ export function NeroSelects({ playlistId }: { playlistId: string }) {
 
   const playing = state === "playing";
   return <section className={`nero-selects${playing ? " is-playing" : ""}`} aria-label="NERO SELECTS, playlist oficial en Spotify">
-    {/* eslint-disable-next-line @next/next/no-img-element -- portada local fija de 512px, sin optimización necesaria */}
-    <img className="nero-selects-cover" src="/icon-512.png" alt="Portada de NERO SELECTS" width={168} height={168} />
-    <div className="nero-selects-body">
-      <span className="nero-selects-tag"><span aria-hidden="true">●</span> NERO SELECTS · OFICIAL</span>
-      <div className="nero-selects-actions">
-        <button className="btn" type="button" onClick={toggle} aria-pressed={playing} disabled={state === "loading"}>{buttonLabel(state)}</button>
-        <a className="btn secondary" href={`https://open.spotify.com/playlist/${playlistId}`} target="_blank" rel="noreferrer">ABRIR EN SPOTIFY <span aria-hidden="true">↗</span></a>
-      </div>
+    <div className="nero-selects-actions">
+      <button className="btn" type="button" onClick={toggle} aria-pressed={playing} disabled={state === "loading"}>{buttonLabel(state)}</button>
+      <a className="social-action" href={`https://open.spotify.com/playlist/${playlistId}`} target="_blank" rel="noreferrer">ABRIR EN SPOTIFY ↗</a>
     </div>
     <div ref={host} className={`nero-selects-embed${showEmbed ? " is-open" : ""}`} aria-hidden={!showEmbed} />
-    {showEmbed && <p className="nero-selects-note">Tu navegador pidió dar play desde Spotify: toca ▶ en la barra.</p>}
+    {fallback && !started && <p className="nero-selects-note">Tu navegador pidió dar play desde Spotify: toca ▶ en la barra.</p>}
   </section>;
 }
