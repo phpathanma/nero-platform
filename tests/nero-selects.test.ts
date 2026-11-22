@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buttonLabel, FALLBACK_MS, LOAD_TIMEOUT_MS, needsFallback, nextState, tapAction } from "@/lib/selects-player";
+import { APP_FALLBACK_MS, buttonLabel, FALLBACK_MS, isAndroidInstagramBrowser, LOAD_TIMEOUT_MS, needsAppFallback, needsFallback, nextState, spotifyIntentUrl, spotifyPlaylistUrl, tapAction } from "@/lib/selects-player";
 import { spotifyPlaylistId } from "@/lib/social";
 
 describe("NERO SELECTS", () => {
@@ -46,5 +46,47 @@ describe("NERO SELECTS", () => {
     expect(needsFallback(1000, "paused", 1000 + 3000)).toBe(true);
     expect(needsFallback(1000, "playing", 1000 + 9000)).toBe(false);
     expect(needsFallback(null, "idle", 9000)).toBe(false);
+  });
+});
+
+describe("Instagram en Android", () => {
+  const ua = {
+    androidInstagram: "Mozilla/5.0 (Linux; Android 14; SM-S918B Build/UP1A.231005.007; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/131.0.6778.39 Mobile Safari/537.36 Instagram 356.0.0.41.101 Android (34/14; 480dpi; 1080x2340; samsung; SM-S918B; dm3q; qcom; es_PE; 657421232)",
+    iosInstagram: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Instagram 356.0.0.32.104 (iPhone15,3; iOS 18_1; es_PE; es; scale=3.00; 1290x2796; 654321)",
+    androidChrome: "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.6778.39 Mobile Safari/537.36",
+    desktop: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    androidFacebook: "Mozilla/5.0 (Linux; Android 14; Pixel 8 Build/AP2A.240805.005; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/131.0.6778.39 Mobile Safari/537.36 [FB_IAB/FB4A;FBAV/489.0.0.38.109;]",
+  };
+
+  it("detecta solo el navegador interno de Instagram en Android", () => {
+    expect(isAndroidInstagramBrowser(ua.androidInstagram)).toBe(true);
+    expect(isAndroidInstagramBrowser(ua.iosInstagram)).toBe(false);
+    expect(isAndroidInstagramBrowser(ua.androidChrome)).toBe(false);
+    expect(isAndroidInstagramBrowser(ua.desktop)).toBe(false);
+    expect(isAndroidInstagramBrowser(ua.androidFacebook)).toBe(false);
+    expect(isAndroidInstagramBrowser("")).toBe(false);
+    expect(isAndroidInstagramBrowser(undefined)).toBe(false);
+  });
+
+  it("arma el intent de Android con la web como respaldo", () => {
+    expect(spotifyPlaylistUrl("2BkMuAAmpBVGdOKYXCsITu")).toBe("https://open.spotify.com/playlist/2BkMuAAmpBVGdOKYXCsITu");
+    expect(spotifyIntentUrl("2BkMuAAmpBVGdOKYXCsITu")).toBe(
+      "intent://open.spotify.com/playlist/2BkMuAAmpBVGdOKYXCsITu#Intent;scheme=https;package=com.spotify.music;S.browser_fallback_url=https%3A%2F%2Fopen.spotify.com%2Fplaylist%2F2BkMuAAmpBVGdOKYXCsITu;end",
+    );
+  });
+
+  it("en Instagram de Android el toque abre la app aunque no haya precarga; fuera de ahí todo sigue igual", () => {
+    expect(tapAction(false, "idle", false, true)).toBe("open-app");
+    expect(tapAction(true, "idle", false, true)).toBe("open-app");
+    expect(tapAction(true, "idle", false, false)).toBe("play");
+    expect(tapAction(false, "idle", false, false)).toBe("queue");
+    expect(tapAction(true, "playing", true)).toBe("pause");
+  });
+
+  it("si en 1,5 s la página sigue visible (la app no se abrió), va a la web; si se ocultó, no", () => {
+    expect(APP_FALLBACK_MS).toBe(1500);
+    expect(needsAppFallback("visible", false)).toBe(true);
+    expect(needsAppFallback("hidden", false)).toBe(false);
+    expect(needsAppFallback("visible", true)).toBe(false); // pagehide: la app sí se abrió
   });
 });
