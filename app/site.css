@@ -100,9 +100,11 @@
 /* Sin eventos, la sección «Síguenos» queda solo con Instagram a todo el ancho (el reproductor está en el Hero). */
 .social-section.is-single { grid-template-columns: 1fr; }
 
-/* NERO SELECTS: fila de acciones bajo el texto del Hero vacío, en su misma columna. Sin portada ni caja. */
+/* NERO SELECTS: bajo el texto del Hero vacío, en su misma columna. Sin portada ni caja.
+   Un solo botón y, justo debajo en todos los tamaños, el enlace a Spotify (por si el embed no deja reproducir,
+   p. ej. el banner de Spotify en Instagram de Android, y se prefiere escuchar en la app). */
 .nero-selects { display: flex; flex-direction: column; gap: 14px; width: 100%; max-width: 540px; }
-.nero-selects-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
+.nero-selects-actions { display: flex; flex-direction: column; align-items: flex-start; gap: 14px; }
 .nero-selects-actions .btn { margin-top: 0; min-height: 54px; padding-inline: 28px; }
 .nero-selects-actions .btn[aria-pressed="true"] { background: transparent; color: var(--acid); }
 .nero-selects-actions .btn:disabled { opacity: .7; cursor: progress; transform: none; }
@@ -115,8 +117,8 @@
 /* Agenda vacía: aviso con la invitación a Instagram (que salió del Hero). */
 .agenda-empty p { margin: 0 0 4px; }
 @media (max-width: 760px) {
-  /* Móvil: el botón ocupa todo el ancho y el enlace a Spotify queda debajo. */
-  .nero-selects-actions .btn { flex: 1 1 100%; }
+  /* Móvil: el botón ocupa todo el ancho (el enlace a Spotify sigue debajo). */
+  .nero-selects-actions .btn { align-self: stretch; }
   .agenda-empty .btn { width: 100%; }
 }
 
