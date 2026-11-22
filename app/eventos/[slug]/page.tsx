@@ -16,7 +16,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const event = await getEventBySlug(slug);
   if (!event) return {};
   const description = `${formatEventDate(event.date)} · ${formatEventTime(event.time)} · ${event.venue}, ${event.city}`;
-  return { title: event.name, description, openGraph: { title: `${event.name} | NERO`, description, ...(event.flyer ? { images: [event.flyer] } : {}) } };
+  // La imagen 1200×630 (flyer + datos) la genera opengraph-image.tsx de esta carpeta; el flyer vertical se recortaba.
+  return { title: event.name, description, openGraph: { title: `${event.name} | NERO`, description } };
 }
 
 export default async function EventPage({ params }: { params: Promise<{ slug: string }> }) {
