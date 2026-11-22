@@ -68,7 +68,13 @@ export default async function HomePage() {
               <span className="row-price">{lowestPriceLabel(event.tiers)}</span>
               <span className="row-arrow" aria-hidden="true">↗</span>
             </Link>
-          ))}</div> : <div className="empty">Pronto anunciaremos nuevas fechas. <a className="social-action" href={instagramUrl} target="_blank" rel="noreferrer">Síguenos en Instagram ↗</a></div>}
+          ))}</div> : (
+            // Sin eventos activos: en lugar del aviso vacío, la selección oficial de NERO en Spotify (único reproductor de la página).
+            <article className="social-card spotify agenda-listen" data-mark="♫">
+              <div><span className="mono-label">Mientras anunciamos nuevas fechas</span><h2>Sigue escuchando NERO</h2><p>La selección oficial de NERO en Spotify: house y techno para mantener la noche encendida hasta la próxima fecha.</p></div>
+              <SpotifyPlayer playlistId={spotifyPlaylistId} />
+            </article>
+          )}
         </section>
 
         <section id="nosotros" className="block statement">
@@ -90,15 +96,16 @@ export default async function HomePage() {
           ))}</div> : <div className="empty">Pronto compartiremos recuerdos de nuestras noches.</div>}
         </section>
 
-        <section id="siguenos" className="social-section" aria-label="Conecta con NERO">
+        <section id="siguenos" className={`social-section${upcoming.length ? "" : " is-single"}`} aria-label="Conecta con NERO">
           <article className="social-card" data-mark="@">
             <div><span className="mono-label">Detrás de la noche</span><h2>Síguenos en Instagram</h2><p>Anuncios, artistas y momentos desde la pista. La conversación continúa en Instagram.</p></div>
             <a className="social-action" href={instagramUrl} target="_blank" rel="noreferrer">IR A INSTAGRAM ↗</a>
           </article>
-          <article className="social-card" data-mark="♫">
+          {/* Si la Agenda ya muestra el reproductor, no se repite aquí: dos reproductores chocarían con la misma API de Spotify. */}
+          {upcoming.length > 0 && <article className="social-card" data-mark="♫">
             <div><span className="mono-label">El sonido de NERO</span><h2>Escucha nuestra selección</h2><p>Una playlist para entrar en ambiente, estés donde estés.</p></div>
             <SpotifyPlayer playlistId={spotifyPlaylistId} />
-          </article>
+          </article>}
         </section>
       </main>
       <SiteFooter />

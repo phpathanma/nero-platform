@@ -95,6 +95,9 @@
 .spotify-player { width: 100%; display: flex; flex-direction: column; align-items: flex-start; gap: 14px; }
 .spotify-holder { width: 100%; min-height: 152px; }
 .spotify-holder iframe { display: block; border: 0; border-radius: 12px; }
+/* Agenda sin eventos: tarjeta de Spotify en lugar del aviso vacío; abajo queda solo Instagram a todo el ancho. */
+.agenda-listen { min-height: 0; }
+.social-section.is-single { grid-template-columns: 1fr; }
 
 /* Pie */
 .site-footer { margin-top: 40px; border-top: 1px solid var(--ink); padding: 48px max(24px, calc((100vw - 1180px) / 2)) 28px; }
