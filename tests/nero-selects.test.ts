@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buttonLabel, FALLBACK_MS, LOAD_TIMEOUT_MS, needsFallback, nextState } from "@/lib/selects-player";
+import { buttonLabel, FALLBACK_MS, LOAD_TIMEOUT_MS, needsFallback, nextState, tapAction } from "@/lib/selects-player";
 import { spotifyPlaylistId } from "@/lib/social";
 
 describe("NERO SELECTS", () => {
@@ -12,6 +12,23 @@ describe("NERO SELECTS", () => {
     expect(buttonLabel("loading")).toBe("CARGANDO…");
     expect(buttonLabel("playing")).toBe("❚❚ PAUSAR");
     expect(buttonLabel("paused")).toBe("▶ ESCUCHAR SELECCIÓN");
+  });
+
+  it("con el reproductor precargado, el toque reproduce al instante (sin «CARGANDO…»)", () => {
+    expect(tapAction(true, "idle", false)).toBe("play"); // primer toque: play() dentro del propio gesto
+    expect(tapAction(true, "playing", true)).toBe("pause");
+    expect(tapAction(true, "paused", true)).toBe("resume"); // retoma donde iba
+    expect(tapAction(true, "paused", false)).toBe("play"); // pausado por el aviso inicial de Spotify, aún sin sonar
+  });
+
+  it("si se toca antes de que Spotify termine de precargar, el pedido queda en cola", () => {
+    expect(tapAction(false, "idle", false)).toBe("queue");
+    expect(tapAction(false, "paused", false)).toBe("queue");
+  });
+
+  it("el aviso inicial de Spotify en pausa no cambia el botón", () => {
+    expect(nextState("idle", true)).toBe("paused");
+    expect(buttonLabel(nextState("idle", true))).toBe("▶ ESCUCHAR SELECCIÓN");
   });
 
   it("solo pasa a sonando cuando Spotify lo confirma", () => {

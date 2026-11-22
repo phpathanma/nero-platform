@@ -19,6 +19,17 @@ export function nextState(current: PlayerState, isPaused: boolean): PlayerState 
   return current === "loading" ? "loading" : "paused";
 }
 
+// Qué hace un toque del botón. Con el reproductor ya precargado, play/resume se llama dentro del propio toque
+// (así suena al instante y iPhone tiene más chance de aceptarlo). Si se toca antes de que Spotify esté listo,
+// el pedido queda en cola y se reproduce apenas cargue.
+export type TapAction = "pause" | "play" | "resume" | "queue";
+
+export function tapAction(ready: boolean, state: PlayerState, hasPlayed: boolean): TapAction {
+  if (!ready) return "queue";
+  if (state === "playing") return "pause";
+  return hasPlayed ? "resume" : "play";
+}
+
 // Se muestra la barra de Spotify si se pidió reproducir y, pasado el plazo, no está sonando.
 export function needsFallback(requestedAt: number | null, state: PlayerState, now: number): boolean {
   return requestedAt !== null && state !== "playing" && now - requestedAt >= FALLBACK_MS;

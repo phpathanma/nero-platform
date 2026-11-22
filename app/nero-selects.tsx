@@ -1,13 +1,16 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { loadSpotifyApi, type SpotifyController } from "@/lib/spotify-embed";
-import { buttonLabel, FALLBACK_MS, LOAD_TIMEOUT_MS, needsFallback, nextState, type PlayerState } from "@/lib/selects-player";
+import { buttonLabel, FALLBACK_MS, LOAD_TIMEOUT_MS, needsFallback, nextState, tapAction, type PlayerState } from "@/lib/selects-player";
+
+type IdleWindow = Window & { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number; cancelIdleCallback?: (id: number) => void };
 
 // NERO SELECTS en el Hero: una sola fila con el botón de escuchar y el enlace a Spotify, bajo el texto del Hero.
-// Spotify solo se carga al primer toque y su reproductor queda montado pero oculto hasta que suena (entonces se ve
-// la barra compacta, con su atribución) o hasta que salta el respaldo de 2,5 s: en iPhone, Safari no deja sonar
-// el iframe oculto y la barra aparece para darle play directo.
+// El reproductor de Spotify se precarga al abrir la página (cuando el navegador está libre) y queda montado pero
+// oculto, así el toque reproduce al instante. Nunca suena solo: solo con el toque. La barra compacta se ve cuando
+// suena (con su atribución) o si salta el respaldo de 2,5 s: en iPhone, Safari puede bloquear el audio del iframe
+// oculto y la barra aparece para darle play directo.
 export function NeroSelects({ playlistId }: { playlistId: string }) {
   const [state, setState] = useState<PlayerState>("idle");
   const [fallback, setFallback] = useState(false);
@@ -15,15 +18,19 @@ export function NeroSelects({ playlistId }: { playlistId: string }) {
   const showEmbed = started || fallback;
   const host = useRef<HTMLDivElement>(null);
   const controller = useRef<SpotifyController | null>(null);
+  const ready = useRef(false);
+  const queued = useRef(false);
+  const hasPlayed = useRef(false);
   const stateRef = useRef<PlayerState>("idle");
   const requestedAt = useRef<number | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const update = (next: PlayerState) => { stateRef.current = next; setState(next); };
+  // Estables (solo usan refs y setState): el efecto de precarga no se vuelve a ejecutar en cada render.
+  const update = useCallback((next: PlayerState) => { stateRef.current = next; setState(next); }, []);
 
-  // Los 2,5 s cuentan desde que se pide reproducir con Spotify ya listo (no desde el toque: cargar Spotify tarda más).
-  // Con waitMs mayor sirve de red de seguridad si Spotify nunca termina de cargar.
-  const armFallback = (waitMs: number = FALLBACK_MS) => {
+  // Los 2,5 s cuentan desde que se pide reproducir con Spotify listo. Con waitMs mayor sirve de red de seguridad
+  // si se tocó antes de que Spotify terminara de cargar y nunca llega a estar listo.
+  const armFallback = useCallback((waitMs: number = FALLBACK_MS) => {
     requestedAt.current = Date.now() - (FALLBACK_MS - waitMs);
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => {
@@ -32,36 +39,55 @@ export function NeroSelects({ playlistId }: { playlistId: string }) {
         if (stateRef.current === "loading") update("paused");
       }
     }, waitMs);
-  };
+  }, [update]);
 
-  useEffect(() => () => {
-    if (timer.current) clearTimeout(timer.current);
-    controller.current?.destroy();
-  }, []);
+  // Precarga: crea el controlador de Spotify al montar, sin reproducir.
+  useEffect(() => {
+    const target = document.createElement("div");
+    host.current?.appendChild(target);
+    let cancelled = false;
+    const preload = () => {
+      loadSpotifyApi().then((api) => {
+        if (cancelled) return;
+        api.createController(target, { uri: `spotify:playlist:${playlistId}`, width: "100%", height: 80 }, (created) => {
+          if (cancelled) { created.destroy(); return; }
+          controller.current = created;
+          created.addListener("playback_update", ({ data }) => {
+            const next = nextState(stateRef.current, data.isPaused);
+            if (next === "playing") { requestedAt.current = null; hasPlayed.current = true; setStarted(true); }
+            update(next);
+          });
+          created.addListener("ready", () => {
+            ready.current = true;
+            // Si tocaron antes de que estuviera listo, se cumple ese pedido ahora.
+            if (queued.current) { queued.current = false; created.play(); armFallback(); }
+          });
+        });
+      });
+    };
+    const w = window as IdleWindow;
+    const idleId = w.requestIdleCallback ? w.requestIdleCallback(preload, { timeout: 2000 }) : null;
+    const timeoutId = idleId === null ? setTimeout(preload, 600) : null;
+    return () => {
+      cancelled = true;
+      if (idleId !== null) w.cancelIdleCallback?.(idleId);
+      if (timeoutId !== null) clearTimeout(timeoutId);
+      if (timer.current) clearTimeout(timer.current);
+      controller.current?.destroy();
+      controller.current = null;
+      target.remove();
+    };
+  }, [playlistId, armFallback, update]);
 
   function toggle() {
-    if (controller.current) {
-      if (stateRef.current === "playing") { controller.current.pause(); return; }
-      controller.current.resume();
-      armFallback();
-      return;
-    }
-    if (stateRef.current === "loading" || !host.current) return;
+    const action = tapAction(ready.current, stateRef.current, hasPlayed.current);
+    if (action === "pause") { controller.current?.pause(); return; }
+    if (action === "play") { controller.current?.play(); armFallback(); return; }
+    if (action === "resume") { controller.current?.resume(); armFallback(); return; }
+    if (queued.current) return;
+    queued.current = true;
     update("loading");
     armFallback(LOAD_TIMEOUT_MS);
-    const target = document.createElement("div");
-    host.current.appendChild(target);
-    loadSpotifyApi().then((api) => {
-      api.createController(target, { uri: `spotify:playlist:${playlistId}`, width: "100%", height: 80 }, (created) => {
-        controller.current = created;
-        created.addListener("playback_update", ({ data }) => {
-          const next = nextState(stateRef.current, data.isPaused);
-          if (next === "playing") { requestedAt.current = null; setStarted(true); }
-          update(next);
-        });
-        created.addListener("ready", () => { created.play(); armFallback(); });
-      });
-    });
   }
 
   const playing = state === "playing";
